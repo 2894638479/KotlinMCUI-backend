@@ -10,18 +10,27 @@ import kotlinx.coroutines.withContext
 import io.github.u2894638479.kotlinmcui.DslDataStore
 import io.github.u2894638479.kotlinmcui.DslScreen
 import io.github.u2894638479.kotlinmcui.InternalBackend
+import io.github.u2894638479.kotlinmcui.context.DslContext
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.context.scaled
 import io.github.u2894638479.kotlinmcui.dslLogger
 import io.github.u2894638479.kotlinmcui.functions.DslFunction
+import io.github.u2894638479.kotlinmcui.functions.dataStore
+import io.github.u2894638479.kotlinmcui.functions.decorator.backGroundImage
+import io.github.u2894638479.kotlinmcui.functions.imageResource
+import io.github.u2894638479.kotlinmcui.functions.ui.BackgroundImage
+import io.github.u2894638479.kotlinmcui.functions.ui.Image
 import io.github.u2894638479.kotlinmcui.glfw.EventModifier
 import io.github.u2894638479.kotlinmcui.glfw.MouseButton
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
+import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.Measure
 import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.Rect
 import io.github.u2894638479.kotlinmcui.math.px
+import io.github.u2894638479.kotlinmcui.modifier.Modifier
+import io.github.u2894638479.kotlinmcui.scope.DslChild
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
@@ -147,7 +156,11 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     }
 
     override fun translate(key: String,vararg args: Any): String? {
-        return Language.getInstance().getOrDefault(key,null)
+        return Language.getInstance().getOrDefault(key,null)?.let {
+            if(args.isEmpty()) it else try {
+                return String.format(it,*Array(args.size) { args[it].toString() })
+            } catch (_: Exception) { it }
+        }
     }
 
     override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
@@ -250,11 +263,20 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
     }
 
+    context(ctx: DslScaleContext,renderPara: GuiGraphics)
+    override fun renderDefaultBackground(rect: Rect) {
+        ImageStrategy.repeat(scale = ctx.scale).render(
+            rect,
+            ImageHolder(Screen.BACKGROUND_LOCATION.toString(), 32.px, 32.px),
+            Color(0.25,0.25,0.25)
+        )
+    }
+
     override fun getFont(name: String?) = defaultFont
 
     override val defaultFont = object : DslFont<GuiGraphics> {
-        val font = Minecraft.getInstance().font
-        val fontSet = font.getFontSet(Minecraft.DEFAULT_FONT)
+        val font get() = Minecraft.getInstance().font
+        val fontSet get() = font.getFontSet(Minecraft.DEFAULT_FONT)
         override val lineHeight get() = font.lineHeight.px
         override fun glyph(code: Int) = object : DslGlyph {
             val glyph = fontSet.getGlyphInfo(code,false)
