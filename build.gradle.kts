@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("fabric-loom")
     kotlin("jvm")
+    id("me.modmuss50.mod-publish-plugin") version "0.8.1"
 }
 
 val maven_group: String by project
@@ -108,4 +109,22 @@ tasks.processResources {
     )
     inputs.properties(map)
     filesMatching("fabric.mod.json") { expand(map) }
+}
+
+publishMods {
+    file = tasks.jar.get().archiveFile
+    additionalFiles = files(sourcesJar.archiveFile)
+    changelog = ""
+    type = ALPHA
+    displayName = "KotlinMCUI-backend ${project.version}"
+    modLoaders.add("fabric")
+
+    modrinth {
+        accessToken = providers.environmentVariable("MODRINTH_TOKEN")
+        projectId = "FjVgWB2Y"
+        minecraftVersionRange {
+            start = minecraft_version
+            end = minecraft_version
+        }
+    }
 }
