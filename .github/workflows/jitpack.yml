@@ -1,8 +1,8 @@
 name: jitpack
-on: [push]
+on: [push, workflow_dispatch]
 
 jobs:
-  build:
+  trigger:
     runs-on: ubuntu-24.04
     steps:
       - name: checkout repository
