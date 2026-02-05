@@ -36,13 +36,18 @@ repositories {
     mavenCentral()
     maven("https://maven.fabricmc.net/")
     maven("https://maven.terraformersmc.com")
+    maven("https://jitpack.io")
 }
 
 loom {
     accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
 }
 
-
+configurations.all {
+    resolutionStrategy {
+        cacheChangingModulesFor(0, "seconds")
+    }
+}
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraft_version")
@@ -50,10 +55,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
     modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
-    implementation(files(
-        "..\\kotlinmcui\\build\\libs\\kotlinmcui-$kotlinmcui_version.jar",
-        "..\\kotlinmcui\\build\\libs\\kotlinmcui-$kotlinmcui_version-sources.jar"
-    ))
+    implementation("com.github.2894638479:KotlinMCUI:master-SNAPSHOT")
 }
 
 kotlin {
