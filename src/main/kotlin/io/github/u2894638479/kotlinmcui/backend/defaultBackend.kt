@@ -3,37 +3,24 @@ package io.github.u2894638479.kotlinmcui.backend
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import io.github.u2894638479.kotlinmcui.DslDataStore
-import io.github.u2894638479.kotlinmcui.DslScreen
 import io.github.u2894638479.kotlinmcui.InternalBackend
-import io.github.u2894638479.kotlinmcui.context.DslContext
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.context.scaled
 import io.github.u2894638479.kotlinmcui.dslLogger
 import io.github.u2894638479.kotlinmcui.functions.DslFunction
-import io.github.u2894638479.kotlinmcui.functions.dataStore
-import io.github.u2894638479.kotlinmcui.functions.decorator.backGroundImage
-import io.github.u2894638479.kotlinmcui.functions.imageResource
-import io.github.u2894638479.kotlinmcui.functions.ui.BackgroundImage
-import io.github.u2894638479.kotlinmcui.functions.ui.Image
 import io.github.u2894638479.kotlinmcui.glfw.EventModifier
 import io.github.u2894638479.kotlinmcui.glfw.MouseButton
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
-import io.github.u2894638479.kotlinmcui.math.Color
-import io.github.u2894638479.kotlinmcui.math.Measure
-import io.github.u2894638479.kotlinmcui.math.Position
-import io.github.u2894638479.kotlinmcui.math.Rect
-import io.github.u2894638479.kotlinmcui.math.px
-import io.github.u2894638479.kotlinmcui.modifier.Modifier
-import io.github.u2894638479.kotlinmcui.scope.DslChild
+import io.github.u2894638479.kotlinmcui.math.*
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
@@ -68,11 +55,11 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         }
         override fun renderString(guiGraphics: GuiGraphics?, font: Font?, i: Int) {}
         override fun renderScrollingString(guiGraphics: GuiGraphics?, font: Font?, i: Int, j: Int) {}
-        context(renderPara: GuiGraphics)
+        context(renderParam: GuiGraphics)
         fun render() = stack {
             if(width <= 0 || height <= 0) return@stack
-            renderPara.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
-            try { renderWidget(renderPara,0,0,0f) } catch (_: Exception) {}
+            renderParam.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
+            try { renderWidget(renderParam,0,0,0f) } catch (_: Exception) {}
         }
     }
     private val vanillaEditBox = object : EditBox(Minecraft.getInstance().font,0,0,0,0,Component.empty()) {
@@ -86,48 +73,35 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             isFocused = highlighted
             repeat(7) { tick() }
         }
-        context(renderPara: GuiGraphics)
+        context(renderParam: GuiGraphics)
         fun render() = stack {
             if(width <= 0 || height <= 0) return@stack
-            renderPara.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
-            try { renderWidget(renderPara,0,0,0f) } catch (_: Exception) {}
+            renderParam.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
+            try { renderWidget(renderParam,0,0,0f) } catch (_: Exception) {}
         }
     }
 
-    context(renderPara:GuiGraphics)
+    context(renderParam:GuiGraphics)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
         vanillaButton.setStatus(rect,highlighted,active)
         vanillaButton.render()
     }
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     override fun renderEditBox(rect: Rect, highlighted: Boolean, color: Color) = withColor(color) {
         vanillaEditBox.setStatus(rect,highlighted)
         vanillaEditBox.render()
     }
 
     private fun VertexConsumer.color(color: Color) = color(color.rInt,color.gInt,color.bInt,color.aInt)
-    context(renderPara:GuiGraphics)
-    override fun fillRect(rect: Rect, color: Color, z: Measure) = rect.run {
-        val renderType = RenderType.gui()
-        val vc = renderPara.bufferSource.getBuffer(renderType)
-        val matrix = renderPara.pose().last().pose()
-        val l = left.pixelsOrWarn<Float> { return@run }
-        val t = top.pixelsOrWarn<Float> { return@run }
-        val r = right.pixelsOrWarn<Float> { return@run }
-        val b = bottom.pixelsOrWarn<Float> { return@run }
-        val z = z.pixelsOrWarn<Float> { return@run }
-        vc.vertex(matrix,l,t,z).color(color).endVertex()
-        vc.vertex(matrix,l,b,z).color(color).endVertex()
-        vc.vertex(matrix,r,b,z).color(color).endVertex()
-        vc.vertex(matrix,r,t,z).color(color).endVertex()
-        renderPara.flush()
-    }
+    context(renderParam:GuiGraphics)
+    override fun fillRect(rect: Rect, color: Color) = 
+        fillRectGradient(rect,color,color,color,color)
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     override fun fillRectGradient(rect: Rect, lt: Color, rt: Color, lb: Color, rb: Color) = rect.run {
-        val vc = renderPara.bufferSource.getBuffer(RenderType.gui())
-        val matrix = renderPara.pose().last().pose()
+        val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
+        val matrix = renderParam.pose().last().pose()
         val l = left.pixelsOrWarn<Float> { return@run }
         val t = top.pixelsOrWarn<Float> { return@run }
         val r = right.pixelsOrWarn<Float> { return@run }
@@ -136,14 +110,14 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         vc.vertex(matrix,l,b,0f).color(lb).endVertex()
         vc.vertex(matrix,r,b,0f).color(rb).endVertex()
         vc.vertex(matrix,r,t,0f).color(rt).endVertex()
-        renderPara.flush()
+        renderParam.flush()
     }
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     override fun withScissor(rect: Rect, block: () -> Unit) {
-        renderPara.flush()
+        renderParam.flush()
         rect.run {
-            renderPara.enableScissor(
+            renderParam.enableScissor(
                 (left/guiScale).pixelsOrWarn<Int> { return },
                 (top/guiScale).pixelsOrWarn<Int> { return },
                 (right/guiScale).pixelsOrWarn<Int> { return },
@@ -151,8 +125,8 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             )
         }
         block()
-        renderPara.flush()
-        renderPara.disableScissor()
+        renderParam.flush()
+        renderParam.disableScissor()
     }
 
     override fun translate(key: String,vararg args: Any): String? {
@@ -165,13 +139,13 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     private inline fun stack(block:()->Unit) {
-        renderPara.pose().pushPose()
+        renderParam.pose().pushPose()
         try {
             block()
         } finally {
-            renderPara.pose().popPose()
+            renderParam.pose().popPose()
         }
     }
 
@@ -224,15 +198,15 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         return loadLocalImage(file)
     }
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     private var color: Color
         get() = RenderSystem.getShaderColor().let { Color(it[0], it[1], it[2], it[3]) }
         set(value) {
-            renderPara.flush()
+            renderParam.flush()
             RenderSystem.setShaderColor(value.rFloat, value.gFloat, value.bFloat,value.aFloat)
         }
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     private inline fun withColor(color: Color, block:()->Unit) {
         if(color == Color.WHITE) return block()
         try {
@@ -243,14 +217,14 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         }
     }
 
-    context(renderPara: GuiGraphics)
+    context(renderParam: GuiGraphics)
     override fun renderImage(image: ImageHolder, rect: Rect, uv: Rect, color: Color) {
         if(image.isEmpty) return
         fun Measure.int() = pixelsOrElse { 0 }
 //        fun Measure.float() = pixelsOrElse { 0f }
-//        renderPara.blit(ResourceLocation(image.id),rect.left.int(),rect.top.int(),rect.width.int(),rect.height.int(),
+//        renderParam.blit(ResourceLocation(image.id),rect.left.int(),rect.top.int(),rect.width.int(),rect.height.int(),
 //            uv.left.float(),uv.top.float(),uv.width.int(),uv.height.int(),image.width.int(),image.height.int())
-        renderPara.innerBlit(
+        renderParam.innerBlit(
             ResourceLocation(image.id),
             rect.left.int(),rect.right.int(),rect.top.int(),rect.bottom.int(),0,
             (uv.left / image.width).toFloat(),(uv.right / image.width).toFloat(),
@@ -263,7 +237,11 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
     }
 
-    context(ctx: DslScaleContext,renderPara: GuiGraphics)
+    override fun narrate(string: String) {
+        Minecraft.getInstance().narrator.sayNow(string.ifEmpty { return })
+    }
+
+    context(ctx: DslScaleContext,renderParam: GuiGraphics)
     override fun renderDefaultBackground(rect: Rect) {
         ImageStrategy.repeat(scale = ctx.scale).render(
             rect,
@@ -274,7 +252,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     override fun getFont(name: String?) = defaultFont
 
-    override val defaultFont = object : DslFont<GuiGraphics> {
+    val defaultFont = object : DslFont<GuiGraphics> {
         val font get() = Minecraft.getInstance().font
         val fontSet get() = font.getFontSet(Minecraft.DEFAULT_FONT)
         override val lineHeight get() = font.lineHeight.px
@@ -285,15 +263,15 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             override val shadowOffset get() = glyph.shadowOffset.px
         }
 
-        context(renderPara: GuiGraphics)
+        context(renderParam: GuiGraphics)
         private fun renderCharOnly(char: DslRenderableChar, glyph: BakedGlyph, x: Measure, y: Measure, color: Color, boldOffset: Measure) {
             if (char.code == ' '.code) return
             glyph.render(
                 char.style.isItalic,
                 x.pixelsOrWarn { return },
                 y.pixelsOrWarn { return },
-                renderPara.pose().last().pose(),
-                renderPara.bufferSource.getBuffer(glyph.renderType(Font.DisplayMode.NORMAL)),
+                renderParam.pose().last().pose(),
+                renderParam.bufferSource.getBuffer(glyph.renderType(Font.DisplayMode.NORMAL)),
                 color.rFloat,
                 color.gFloat,
                 color.bFloat,
@@ -303,7 +281,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             if(boldOffset != 0.px) renderCharOnly(char,glyph,x + boldOffset,y,color,0.px)
         }
 
-        context(renderPara: GuiGraphics)
+        context(renderParam: GuiGraphics)
         private fun renderStrike(char: DslRenderableChar, dslGlyph: DslGlyph, x: Measure, y: Measure, color: Color) {
             if(!char.style.isStrikeThrough) return
             fillRect(
@@ -316,7 +294,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             )
         }
 
-        context(renderPara: GuiGraphics)
+        context(renderParam: GuiGraphics)
         private fun renderUnderline(char: DslRenderableChar, dslGlyph: DslGlyph, x: Measure, y: Measure, color: Color) {
             if(!char.style.isUnderlined) return
             fillRect(
@@ -329,13 +307,13 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             )
         }
 
-        context(renderPara: GuiGraphics)
+        context(renderParam: GuiGraphics)
         override fun renderChar(char: DslRenderableChar, x: Measure, y: Measure, effectLeft: Measure, effectRight: Measure) {
             val dslGlyph by lazy { glyph(char.code) }
             val glyph = if(char.style.isObfuscated) fontSet.getRandomGlyph(dslGlyph.glyph) else fontSet.getGlyph(char.code)
             val scale = (char.size / lineHeight).toFloat()
             stack {
-                renderPara.pose().scale(scale,scale,1f)
+                renderParam.pose().scale(scale,scale,1f)
                 val x = x / scale
                 val y = y / scale
                 if(char.style.isShadowed) {
@@ -358,12 +336,12 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                     renderStrike(char,dslGlyph,x,y,char.color)
                 }
             }
-//            renderPara.flushIfUnmanaged()
+//            renderParam.flushIfUnmanaged()
         }
     }
 
     override val guiScale get() = Minecraft.getInstance().window.guiScale
-    override val isInGame get() = Minecraft.getInstance().level != null
+    override val isInWorld get() = Minecraft.getInstance().level != null
     override fun create(dslFunction: DslFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
         override fun show(){
             Minecraft.getInstance().execute {
