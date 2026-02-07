@@ -36,9 +36,11 @@ import net.minecraft.locale.Language
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
+import net.minecraft.world.item.enchantment.Enchantments
 import java.io.File
 import java.io.IOException
 import javax.imageio.ImageIO
+import kotlin.math.roundToInt
 
 @InternalBackend
 val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
@@ -114,15 +116,20 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     private val missingImage = ImageHolder("missing",16.px,16.px)
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
-    override fun renderItem(rect: Rect, item: String, count:Int) {
+    override fun renderItem(rect: Rect, item: String, count:Int, damage:Double?, enchanted: Boolean) {
         val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation(item))
-        if(item.isPresent) stack {
+        if(!item.isPresent) renderImage(missingImage,rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
+        else stack {
+            val itemStack = item.get().defaultInstance.also {
+                it.count = count
+                if(damage != null) it.damageValue = (damage * it.maxDamage).roundToInt()
+                if(enchanted) it.enchant(Enchantments.SHARPNESS,1)
+            }
             val rect = rect.toDouble().ifEmpty { return@stack }
             renderParam.pose().translate(rect.left,rect.top,0.0)
             renderParam.pose().scale((rect.width / 16.0).toFloat(),(rect.height / 16.0).toFloat(),1f)
-            renderParam.renderItem(item.get().defaultInstance.also { it.count = count }, 0, 0)
-        } else {
-            renderImage(missingImage,rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
+            renderParam.renderItem(itemStack, 0, 0)
+            renderParam.renderItemDecorations(Minecraft.getInstance().font,itemStack,0,0)
         }
     }
 
@@ -233,7 +240,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     context(renderParam: GuiGraphics)
     override fun renderImage(image: ImageHolder, rect: Rect, uv: Rect, color: Color) {
         if(image.isEmpty) return
-        val rect = rect.toInt()
+        val rect = rect.toInt().ifEmpty { return }
         renderParam.innerBlit(
             ResourceLocation(image.id),
             rect.left,rect.right,rect.top,rect.bottom,0,
