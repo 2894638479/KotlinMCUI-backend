@@ -24,8 +24,6 @@ import kotlinx.coroutines.withContext
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.Button
-import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.font.glyphs.BakedGlyph
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.LightTexture
@@ -42,55 +40,23 @@ import javax.imageio.ImageIO
 
 @InternalBackend
 val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
-    private val vanillaButton = object : Button(0,0,0,0,Component.empty(),{}, DEFAULT_NARRATION) {
-        fun setStatus(rect: Rect, highlighted: Boolean, active: Boolean){
-            height = rect.height.div(guiScale).pixelsOrElse { 0 }
-            width = rect.width.div(guiScale).pixelsOrElse { 0 }
-            x = rect.left.div(guiScale).pixelsOrElse { 0 }
-            y = rect.top.div(guiScale).pixelsOrElse { 0 }
-            isHovered = false
-            isFocused = highlighted
-            this.active = active
-            Screen.BACKGROUND_LOCATION
-        }
-        override fun renderString(guiGraphics: GuiGraphics?, font: Font?, i: Int) {}
-        override fun renderScrollingString(guiGraphics: GuiGraphics?, font: Font?, i: Int, j: Int) {}
-        context(renderParam: GuiGraphics)
-        fun render() = stack {
-            if(width <= 0 || height <= 0) return@stack
-            renderParam.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
-            try { renderWidget(renderParam,0,0,0f) } catch (_: Exception) {}
-        }
-    }
-    private val vanillaEditBox = object : EditBox(Minecraft.getInstance().font,0,0,0,0,Component.empty()) {
-        override fun renderScrollingString(guiGraphics: GuiGraphics?, font: Font?, i: Int, j: Int) {}
-        fun setStatus(rect: Rect, highlighted: Boolean) {
-            height = rect.height.div(guiScale).pixelsOrElse { 0 }
-            width = rect.width.div(guiScale).pixelsOrElse { 0 }
-            x = rect.left.div(guiScale).pixelsOrElse { 0 }
-            y = rect.top.div(guiScale).pixelsOrElse { 0 }
-            isHovered = false
-            isFocused = highlighted
-            repeat(7) { tick() }
-        }
-        context(renderParam: GuiGraphics)
-        fun render() = stack {
-            if(width <= 0 || height <= 0) return@stack
-            renderParam.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
-            try { renderWidget(renderParam,0,0,0f) } catch (_: Exception) {}
-        }
-    }
-
     context(renderParam:GuiGraphics)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
-        vanillaButton.setStatus(rect,highlighted,active)
-        vanillaButton.render()
-    }
-
-    context(renderParam: GuiGraphics)
-    override fun renderEditBox(rect: Rect, highlighted: Boolean, color: Color) = withColor(color) {
-        vanillaEditBox.setStatus(rect,highlighted)
-        vanillaEditBox.render()
+        if(rect.isEmpty) return@withColor
+        var textureY = 0
+        if(highlighted) textureY += 20
+        if(active) textureY += 40
+        stack {
+            renderParam.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
+            renderParam.blitNineSliced(
+                ResourceLocation("textures/gui/slider.png"),
+                rect.left.div(guiScale).pixelsOrElse { return@withColor },
+                rect.top.div(guiScale).pixelsOrElse { return@withColor },
+                rect.width.div(guiScale).pixelsOrElse { return@withColor },
+                rect.height.div(guiScale).pixelsOrElse { return@withColor },
+                20, 4, 200, 20, 0, textureY
+            )
+        }
     }
 
     private fun VertexConsumer.color(color: Color) = color(color.rInt,color.gInt,color.bInt,color.aInt)
