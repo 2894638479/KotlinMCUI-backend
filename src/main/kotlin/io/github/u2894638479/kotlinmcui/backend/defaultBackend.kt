@@ -40,55 +40,80 @@ import javax.imageio.ImageIO
 
 @InternalBackend
 val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
-    context(renderParam:GuiGraphics)
+    context(renderParam: GuiGraphics, ctx: DslScaleContext)
+    fun blitNineSliced(location: ResourceLocation,rect: Rect,i:Int,j:Int,k:Int,l:Int,m:Int,n:Int) = stack {
+        renderParam.pose().scale(ctx.scale.toFloat(),ctx.scale.toFloat(),1f)
+        val rect = rect.div(ctx.scale).toInt().ifEmpty { return@stack }
+        try {
+            renderParam.blitNineSliced(
+                location,
+                rect.left, rect.top, rect.width, rect.height,
+                i,j,k,l,m,n
+            )
+        } catch (_: Throwable) {}
+    }
+
+    context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
         if(rect.isEmpty) return@withColor
         var textureY = 0
         if(highlighted) textureY += 20
         if(active) textureY += 40
-        stack {
-            renderParam.pose().scale(guiScale.toFloat(),guiScale.toFloat(),1f)
-            renderParam.blitNineSliced(
-                ResourceLocation("textures/gui/slider.png"),
-                rect.left.div(guiScale).pixelsOrElse { return@withColor },
-                rect.top.div(guiScale).pixelsOrElse { return@withColor },
-                rect.width.div(guiScale).pixelsOrElse { return@withColor },
-                rect.height.div(guiScale).pixelsOrElse { return@withColor },
-                20, 4, 200, 20, 0, textureY
-            )
-        }
+        blitNineSliced(
+            ResourceLocation("textures/gui/slider.png"),
+            rect, 20, 4, 200, 20, 0, textureY
+        )
     }
 
     private fun VertexConsumer.color(color: Color) = color(color.rInt,color.gInt,color.bInt,color.aInt)
+
     context(renderParam:GuiGraphics)
-    override fun fillRect(rect: Rect, color: Color) = 
-        fillRectGradient(rect,color,color,color,color)
+    override fun fillRect(rect: Rect, color: Color) = fillRectGradient(rect,color,color,color,color)
 
     context(renderParam: GuiGraphics)
-    override fun fillRectGradient(rect: Rect, lt: Color, rt: Color, lb: Color, rb: Color) = rect.run {
+    override fun fillRectGradient(rect: Rect, lt: Color, rt: Color, lb: Color, rb: Color) {
         val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
         val matrix = renderParam.pose().last().pose()
-        val l = left.pixelsOrWarn<Float> { return@run }
-        val t = top.pixelsOrWarn<Float> { return@run }
-        val r = right.pixelsOrWarn<Float> { return@run }
-        val b = bottom.pixelsOrWarn<Float> { return@run }
-        vc.vertex(matrix,l,t,0f).color(lt).endVertex()
-        vc.vertex(matrix,l,b,0f).color(lb).endVertex()
-        vc.vertex(matrix,r,b,0f).color(rb).endVertex()
-        vc.vertex(matrix,r,t,0f).color(rt).endVertex()
+        val rect = rect.toFloat().ifEmpty { return }
+        vc.vertex(matrix,rect.left,rect.top,0f).color(lt).endVertex()
+        vc.vertex(matrix,rect.left,rect.bottom,0f).color(lb).endVertex()
+        vc.vertex(matrix,rect.right,rect.bottom,0f).color(rb).endVertex()
+        vc.vertex(matrix,rect.right,rect.top,0f).color(rt).endVertex()
         renderParam.flush()
+    }
+
+    context(renderParam: GuiGraphics, ctx: DslScaleContext)
+    override fun renderContainer(rect: Rect) = blitNineSliced(
+        ResourceLocation("textures/gui/demo_background.png"),
+        rect, 20, 4, 248, 166, 0, 0
+    )
+
+    context(renderParam: GuiGraphics, ctx: DslScaleContext)
+    override fun renderSlot(rect: Rect) {
+        fillRect(rect,Color(139,139,139))
+        fillRect(rect.copy().apply {
+            width = 1.scaled
+            height -= 1.scaled
+        },Color(55,55,55))
+        fillRect(rect.copy().apply {
+            width -= 1.scaled
+            height = 1.scaled
+        },Color(55,55,55))
+        fillRect(rect.copy().apply {
+            left = right - 1.scaled
+            top += 1.scaled
+        },Color.WHITE)
+        fillRect(rect.copy().apply {
+            left += 1.scaled
+            top = bottom - 1.scaled
+        },Color.WHITE)
     }
 
     context(renderParam: GuiGraphics)
     override fun withScissor(rect: Rect, block: () -> Unit) {
         renderParam.flush()
-        rect.run {
-            renderParam.enableScissor(
-                (left/guiScale).pixelsOrWarn<Int> { return },
-                (top/guiScale).pixelsOrWarn<Int> { return },
-                (right/guiScale).pixelsOrWarn<Int> { return },
-                (bottom/guiScale).pixelsOrWarn<Int> { return },
-            )
+        (rect / guiScale).toInt().run {
+            renderParam.enableScissor(left,top,right,bottom)
         }
         block()
         renderParam.flush()
@@ -186,13 +211,10 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     context(renderParam: GuiGraphics)
     override fun renderImage(image: ImageHolder, rect: Rect, uv: Rect, color: Color) {
         if(image.isEmpty) return
-        fun Measure.int() = pixelsOrElse { 0 }
-//        fun Measure.float() = pixelsOrElse { 0f }
-//        renderParam.blit(ResourceLocation(image.id),rect.left.int(),rect.top.int(),rect.width.int(),rect.height.int(),
-//            uv.left.float(),uv.top.float(),uv.width.int(),uv.height.int(),image.width.int(),image.height.int())
+        val rect = rect.toInt()
         renderParam.innerBlit(
             ResourceLocation(image.id),
-            rect.left.int(),rect.right.int(),rect.top.int(),rect.bottom.int(),0,
+            rect.left,rect.right,rect.top,rect.bottom,0,
             (uv.left / image.width).toFloat(),(uv.right / image.width).toFloat(),
             (uv.top / image.height).toFloat(),(uv.bottom / image.height).toFloat(),
             color.rFloat,color.gFloat,color.bFloat,color.aFloat
@@ -302,7 +324,6 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                     renderStrike(char,dslGlyph,x,y,char.color)
                 }
             }
-//            renderParam.flushIfUnmanaged()
         }
     }
 
