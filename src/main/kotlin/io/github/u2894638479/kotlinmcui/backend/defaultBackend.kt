@@ -17,6 +17,7 @@ import io.github.u2894638479.kotlinmcui.math.*
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ import net.minecraft.client.renderer.LightTexture
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.locale.Language
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -109,6 +111,21 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         },Color.WHITE)
     }
 
+    private val missingImage = ImageHolder("missing",16.px,16.px)
+
+    context(renderParam: GuiGraphics, ctx: DslScaleContext)
+    override fun renderItem(rect: Rect, item: String, count:Int) {
+        val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation(item))
+        if(item.isPresent) stack {
+            val rect = rect.toDouble().ifEmpty { return@stack }
+            renderParam.pose().translate(rect.left,rect.top,0.0)
+            renderParam.pose().scale((rect.width / 16.0).toFloat(),(rect.height / 16.0).toFloat(),1f)
+            renderParam.renderItem(item.get().defaultInstance.also { it.count = count }, 0, 0)
+        } else {
+            renderImage(missingImage,rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
+        }
+    }
+
     context(renderParam: GuiGraphics)
     override fun withScissor(rect: Rect, block: () -> Unit) {
         renderParam.flush()
@@ -140,7 +157,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         }
     }
 
-    val imageMap = mutableMapOf<File, ImageHolder>()
+    val imageMap = Object2ObjectOpenHashMap<File, ImageHolder>()
     private suspend fun loadImageFile(file: File): DynamicTexture? {
         val image = try {
             withContext(Dispatchers.IO) {
@@ -173,8 +190,13 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         if(!imageMap.containsKey(file)) {
             imageMap[file] = ImageHolder.empty
             scope.launch {
-                val dynamic = loadImageFile(file) ?: return@launch
-                val native = dynamic.pixels ?: return@launch
+                val dynamic = loadImageFile(file)
+                val native = dynamic?.pixels ?: run {
+                    Minecraft.getInstance().execute {
+                        imageMap[file] = missingImage
+                    }
+                    return@launch
+                }
                 Minecraft.getInstance().execute {
                     val location = Minecraft.getInstance().textureManager.register("dslimageid", dynamic)
                     imageMap[file] = ImageHolder(location.toString(), native.width.px, native.height.px)
