@@ -8,7 +8,7 @@ import io.github.u2894638479.kotlinmcui.InternalBackend
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.context.scaled
 import io.github.u2894638479.kotlinmcui.dslLogger
-import io.github.u2894638479.kotlinmcui.functions.DslFunction
+import io.github.u2894638479.kotlinmcui.functions.DslTopFunction
 import io.github.u2894638479.kotlinmcui.glfw.EventModifier
 import io.github.u2894638479.kotlinmcui.glfw.MouseButton
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
@@ -358,16 +358,16 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     override val guiScale get() = Minecraft.getInstance().window.guiScale
     override val isInWorld get() = Minecraft.getInstance().level != null
-    override fun create(dslFunction: DslFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
+    override fun create(title:String, dslFunction: DslTopFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
         override fun show(){
             Minecraft.getInstance().execute {
                 Minecraft.getInstance().setScreen(screen)
             }
         }
-        override val screen = object : Screen(Component.literal("DSL Screen")), DslScaleContext {
+        override val screen = object : Screen(Component.literal(title)), DslScaleContext {
             override val scale get() = guiScale
             val parent = Minecraft.getInstance().screen
-            fun DslBackend<*,*>.createDataStore() = DslDataStore(this, {
+            fun DslBackend<*,*>.createDataStore() = DslDataStore(this,title, {
                 Minecraft.getInstance().execute { Minecraft.getInstance().setScreen(parent) }
             },dslFunction)
             val dslScreen = createDataStore().dslScreen

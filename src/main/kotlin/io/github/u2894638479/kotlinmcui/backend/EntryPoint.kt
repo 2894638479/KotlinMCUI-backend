@@ -8,5 +8,7 @@ class EntryPoint : ModInitializer {
     override fun onInitialize() {
         @OptIn(InternalBackend::class)
         dslBackendProvider = { defaultBackend }
+        DslEntryService.loadServices()
+        DslEntryService.services.forEach { it.initialize() }
     }
 }
