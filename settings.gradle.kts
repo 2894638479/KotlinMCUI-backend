@@ -6,7 +6,7 @@ pluginManagement {
     }
 
     plugins {
-        id("fabric-loom") version extra["loom_version"] as String
+        id("fabric-loom") version extra["plugin_version"] as String
         kotlin("jvm") version extra["kotlin_version"] as String
     }
 }

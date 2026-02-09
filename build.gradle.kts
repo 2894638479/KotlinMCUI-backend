@@ -1,4 +1,5 @@
 import org.gradle.kotlin.dsl.provideDelegate
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -22,11 +23,16 @@ val mod_modrinth: String by project
 val mod_cuseforge: String by project
 val icon: String by project
 
+val kotlin_version: String by project
+val java_version: String by project
+val kotlinmcui_version: String by project
 val minecraft_version: String by project
+val minecraft_version_range: String by project
+val loader: String by project
 val loader_version: String by project
+val loader_version_range: String by project
 val fabric_kotlin_version: String by project
 val mod_menu_version: String by project
-val kotlinmcui_version: String by project
 
 base.archivesName = archives_base_name
 
@@ -62,17 +68,17 @@ dependencies {
 kotlin {
     jvmToolchain(21)
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        jvmTarget.set(JvmTarget.valueOf("JVM_$java_version"))
     }
 }
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.valueOf("VERSION_$java_version")
+    targetCompatibility = JavaVersion.valueOf("VERSION_$java_version")
 }
 
-val sourcesJar: org.gradle.jvm.tasks.Jar by tasks
+val sourcesJar: Jar by tasks
 sourcesJar.exclude("fabric.mod.json")
 sourcesJar.from("LICENSE")
 
@@ -101,11 +107,16 @@ tasks.processResources {
         "mod_modrinth" to mod_modrinth,
         "mod_cuseforge" to mod_cuseforge,
         "icon" to icon,
+        "kotlin_version" to kotlin_version,
+        "java_version" to java_version,
+        "kotlinmcui_version" to kotlinmcui_version,
         "minecraft_version" to minecraft_version,
+        "minecraft_version_range" to minecraft_version_range,
+        "loader" to loader,
         "loader_version" to loader_version,
+        "loader_version_range" to loader_version_range,
         "fabric_kotlin_version" to fabric_kotlin_version,
         "mod_menu_version" to mod_menu_version,
-        "kotlinmcui_version" to kotlinmcui_version
     )
     inputs.properties(map)
     filesMatching("fabric.mod.json") { expand(map) }
@@ -117,7 +128,7 @@ publishMods {
     changelog = ""
     type = ALPHA
     displayName = "KotlinMCUI-backend ${project.version}"
-    modLoaders.add("fabric")
+    modLoaders.add(loader)
 
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
