@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("fabric-loom")
+    id("net.neoforged.moddev")
     kotlin("jvm")
     id("me.modmuss50.mod-publish-plugin") version "0.8.1"
 }
@@ -32,8 +32,7 @@ val loader: String by project
 val loader_suffix: String by project
 val loader_version: String by project
 val loader_version_range: String by project
-val fabric_kotlin_version: String by project
-val mod_menu_version: String by project
+val kff_version: String by project
 
 base.archivesName = archives_base_name
 
@@ -42,27 +41,41 @@ version = "$mod_version+$loader$loader_suffix+$minecraft_version"
 
 repositories {
     mavenCentral()
-    maven("https://maven.fabricmc.net/")
-    maven("https://maven.terraformersmc.com")
+    maven("https://thedarkcolour.github.io/KotlinForForge/")
     maven("https://jitpack.io")
 }
 
-loom {
-    accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
+
+neoForge {
+    version = loader_version
+    runs {
+        create("client") {
+            client()
+        }
+        configureEach {
+            gameDirectory = File("run")
+        }
+    }
+    mods {
+        create(mod_id) {
+            sourceSet(sourceSets.main.get())
+        }
+    }
 }
 
 configurations.all {
     resolutionStrategy {
         cacheChangingModulesFor(0, "seconds")
+        force("it.unimi.dsi:fastutil:8.5.12")
     }
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:$minecraft_version")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:$loader_version")
-    modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
-    modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
+    implementation("thedarkcolour:kotlinforforge-neoforge:${kff_version}")
+    val localFiles = files(
+        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT.jar",
+        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT-sources.jar",
+    )
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {
@@ -84,10 +97,15 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.valueOf("VERSION_$java_version")
     targetCompatibility = JavaVersion.valueOf("VERSION_$java_version")
+    toolchain.languageVersion.set(JavaLanguageVersion.of(java_version.toInt()))
+}
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(java_version.toInt())
 }
 
 val sourcesJar: Jar by tasks
-sourcesJar.exclude("fabric.mod.json")
+sourcesJar.exclude("META-INF/neoforge.mods.toml")
+sourcesJar.exclude("pack.mcmeta")
 sourcesJar.from("LICENSE")
 
 tasks.jar {
@@ -116,11 +134,11 @@ tasks.processResources {
         "loader" to loader,
         "loader_version" to loader_version,
         "loader_version_range" to loader_version_range,
-        "fabric_kotlin_version" to fabric_kotlin_version,
-        "mod_menu_version" to mod_menu_version,
+        "kff_version" to kff_version,
     )
     inputs.properties(map)
-    filesMatching("fabric.mod.json") { expand(map) }
+    filesMatching("META-INF/neoforge.mods.toml") { expand(map) }
+    filesMatching("pack.mcmeta") { expand(map) }
 }
 
 val tag = "v$version".replace('+','-')
@@ -135,8 +153,8 @@ tasks.configureEach {
 }
 
 publishMods {
-    file = tasks.remapJar.get().archiveFile
-    additionalFiles = files(sourcesJar.archiveFile,tasks.jar)
+    file = tasks.jar.get().archiveFile
+    additionalFiles = files(sourcesJar.archiveFile)
     changelog = "no changelog."
     type = when {
         mod_version.contains("SNAPSHOT",true) -> ALPHA

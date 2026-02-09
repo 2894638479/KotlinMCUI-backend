@@ -2,12 +2,13 @@ package io.github.u2894638479.kotlinmcuibackend
 
 import io.github.u2894638479.kotlinmcui.backend.DslBackendMetadata
 import io.github.u2894638479.kotlinmcui.backend.Environment
-import net.fabricmc.loader.api.FabricLoader
+import net.neoforged.fml.loading.FMLLoader
+import net.neoforged.fml.loading.FMLPaths
 
-internal object Metadata: DslBackendMetadata {
-    override val configDir get() = FabricLoader.getInstance().configDir
-    override val gameDir get() = FabricLoader.getInstance().gameDir
-    override val gameVersion get() = FabricLoader.getInstance().rawGameVersion
-    override val gameLoader get() = "fabric"
+object Metadata: DslBackendMetadata {
+    override val configDir get() = FMLPaths.CONFIGDIR.get()
+    override val gameDir get() = FMLPaths.GAMEDIR.get()
+    override val gameVersion get() = FMLLoader.versionInfo().mcVersion
+    override val gameLoader get() = "neoforge"
     override val environment get() = Environment.CLIENT
 }
