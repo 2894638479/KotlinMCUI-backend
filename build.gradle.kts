@@ -60,6 +60,7 @@ dependencies {
     minecraft("com.mojang:minecraft:$minecraft_version")
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:0.116.8+1.21.1")
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
     modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
     val localFiles = files(

@@ -33,12 +33,12 @@ import net.minecraft.client.renderer.LightTexture
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.locale.Language
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
-import net.minecraft.world.item.enchantment.Enchantments
 import org.lwjgl.glfw.GLFW
 import java.io.File
 import java.io.IOException
@@ -47,22 +47,20 @@ import kotlin.math.roundToInt
 
 internal var eventModifier:Int = 0
 
-internal var horizontalScroller:((Double,Double,Double)-> Unit)? = null
-
 @InternalBackend
 val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
         if(rect.isEmpty) return@withColor
-        var textureY = 0
-        if(highlighted) textureY += 20
-        if(active) textureY += 40
-        val uvOuter = Rect(0.px,textureY.px,200.px,textureY.px + 20.px)
-        val image = ImageHolder("minecraft:textures/gui/slider.png",256.px,256.px)
+        val imageId = "minecraft:textures/gui/sprites/widget/" +
+                (if(active) "button" else "slider") +
+                if(highlighted) "_highlighted.png" else ".png"
+        val image = ImageHolder(imageId,200.px,20.px)
+        val uvOuter = Rect(0.px,0.px,200.px,20.px)
         ImageStrategy.nineSlice(uvOuter,uvOuter.expand(-3.px),ctx.scale).render(rect,image,color)
     }
 
-    private fun VertexConsumer.color(color: Color) = color(color.rInt,color.gInt,color.bInt,color.aInt)
+    private fun VertexConsumer.color(color: Color) = setColor(color.rInt,color.gInt,color.bInt,color.aInt)
 
     context(renderParam:GuiGraphics)
     override fun fillRect(rect: Rect, color: Color) = fillRectGradient(rect,color,color,color,color)
@@ -72,10 +70,10 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
         val matrix = renderParam.pose().last().pose()
         val rect = rect.toFloat().ifEmpty { return }
-        vc.vertex(matrix,rect.left,rect.top,0f).color(lt).endVertex()
-        vc.vertex(matrix,rect.left,rect.bottom,0f).color(lb).endVertex()
-        vc.vertex(matrix,rect.right,rect.bottom,0f).color(rb).endVertex()
-        vc.vertex(matrix,rect.right,rect.top,0f).color(rt).endVertex()
+        vc.addVertex(matrix,rect.left,rect.top,0f).color(lt)
+        vc.addVertex(matrix,rect.left,rect.bottom,0f).color(lb)
+        vc.addVertex(matrix,rect.right,rect.bottom,0f).color(rb)
+        vc.addVertex(matrix,rect.right,rect.top,0f).color(rt)
         renderParam.flush()
     }
 
@@ -101,7 +99,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             val itemStack = item.get().defaultInstance.also {
                 it.count = count
                 if(damage != null) it.damageValue = (damage * it.maxDamage).roundToInt()
-                if(enchanted) it.enchant(Enchantments.SHARPNESS,1)
+                if(enchanted) it.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)
             }
             val rect = rect.toDouble().ifEmpty { return@stack }
             renderParam.pose().translate(rect.left,rect.top,0.0)
@@ -237,13 +235,15 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         Minecraft.getInstance().narrator.sayNow(string.ifEmpty { return })
     }
 
+    val sc = object: Screen(Component.literal("")){
+        init { init(Minecraft.getInstance(),0,0) }
+    }
     context(ctx: DslScaleContext,renderParam: GuiGraphics)
     override fun renderDefaultBackground(rect: Rect) {
-        ImageStrategy.repeat(scale = ctx.scale).render(
-            rect,
-            ImageHolder(Screen.BACKGROUND_LOCATION.toString(), 32.px, 32.px),
-            Color(0.25,0.25,0.25)
-        )
+        sc.width = rect.width.pixelsOrElse { return }
+        sc.height = rect.height.pixelsOrElse { return }
+        sc.renderBackground(renderParam,0,0,
+            ((System.nanoTime() % 50_000_000) / 50_000_000.0).toFloat())
     }
 
     override fun getFont(name: String?) = defaultFont
@@ -353,7 +353,6 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             },dslFunction)
             val dslScreen = createDataStore().dslScreen
             override fun onClose() {
-                horizontalScroller = null
                 dslScreen.close()
             }
             override fun keyPressed(i: Int, j: Int, k: Int): Boolean {
@@ -380,10 +379,10 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                 dslScreen.run { mouseMove(Position(d.scaled, e.scaled)) }
                 super.mouseMoved(d, e)
             }
-            override fun mouseScrolled(d: Double, e: Double, f: Double): Boolean {
-                val remain = dslScreen.run { mouseScrollVertical(Position(d.scaled, e.scaled), f) }
-                if(remain == 0.0) return true
-                return super.mouseScrolled(d, e, remain)
+            override fun mouseScrolled(d: Double, e: Double, f: Double,g: Double): Boolean {
+                val remainX = dslScreen.run { mouseScrollVertical(Position(d.scaled, e.scaled), f) }
+                val remainY = dslScreen.run { mouseScrollVertical(Position(d.scaled, e.scaled), g) }
+                return super.mouseScrolled(d, e, remainX,remainY)
             }
 
             override fun charTyped(c: Char, i: Int): Boolean {
@@ -401,9 +400,6 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
             override fun init() {
                 super.init()
-                horizontalScroller = { x,y,f ->
-                    dslScreen.run { mouseScrollHorizontal(Position(x.px, y.px), f) }
-                }
                 dslScreen.init(Rect().also {
                     it.width = width.px * guiScale
                     it.height = height.px * guiScale
