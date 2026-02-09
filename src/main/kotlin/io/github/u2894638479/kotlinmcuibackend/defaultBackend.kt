@@ -1,10 +1,12 @@
-package io.github.u2894638479.kotlinmcui.backend
+package io.github.u2894638479.kotlinmcuibackend
 
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
 import io.github.u2894638479.kotlinmcui.DslDataStore
 import io.github.u2894638479.kotlinmcui.InternalBackend
+import io.github.u2894638479.kotlinmcui.backend.DslBackend
+import io.github.u2894638479.kotlinmcui.backend.DslBackendScreenHolder
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.context.scaled
 import io.github.u2894638479.kotlinmcui.dslLogger
