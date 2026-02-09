@@ -32,8 +32,8 @@
     "mixins": [],
     "accessWidener": "kotlinmcuibackend.accesswidener",
     "depends": {
-        "fabricloader": ">=${loader_version}",
-        "minecraft": "${minecraft_version}",
+        "fabricloader": "${loader_version_range}",
+        "minecraft": "${minecraft_version_range}",
         "java": "*",
         "fabric-language-kotlin": ">=${fabric_kotlin_version}",
         "kotlinmcui": "^${kotlinmcui_version}"
