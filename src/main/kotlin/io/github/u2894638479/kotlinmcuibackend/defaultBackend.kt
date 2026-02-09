@@ -47,7 +47,8 @@ import kotlin.math.roundToInt
 @InternalBackend
 val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
-    fun blitNineSliced(location: ResourceLocation,rect: Rect,i:Int,j:Int,k:Int,l:Int,m:Int,n:Int) = stack {
+    fun blitNineSliced(location: ResourceLocation?,rect: Rect,i:Int,j:Int,k:Int,l:Int,m:Int,n:Int) = stack {
+        location ?: return@stack
         renderParam.pose().scale(ctx.scale.toFloat(),ctx.scale.toFloat(),1f)
         val rect = rect.div(ctx.scale).toInt().ifEmpty { return@stack }
         try {
@@ -66,7 +67,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         if(highlighted) textureY += 20
         if(active) textureY += 40
         blitNineSliced(
-            ResourceLocation.parse("textures/gui/slider.png"),
+            ResourceLocation.tryParse("textures/gui/slider.png"),
             rect, 20, 4, 200, 20, 0, textureY
         )
     }
@@ -90,7 +91,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderContainer(rect: Rect) = blitNineSliced(
-        ResourceLocation.parse("textures/gui/demo_background.png"),
+        ResourceLocation.tryParse("textures/gui/demo_background.png"),
         rect, 20, 4, 248, 166, 0, 0
     )
 
@@ -119,7 +120,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderItem(rect: Rect, item: String, count:Int, damage:Double?, enchanted: Boolean) {
-        val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(item))
+        val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(item))
         if(!item.isPresent) renderImage(missingImage,rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
         else stack {
             val itemStack = item.get().defaultInstance.also {
@@ -244,7 +245,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         if(image.isEmpty) return
         val rect = rect.toInt().ifEmpty { return }
         renderParam.innerBlit(
-            ResourceLocation.parse(image.id),
+            ResourceLocation.tryParse(image.id),
             rect.left,rect.right,rect.top,rect.bottom,0,
             (uv.left / image.width).toFloat(),(uv.right / image.width).toFloat(),
             (uv.top / image.height).toFloat(),(uv.bottom / image.height).toFloat(),
