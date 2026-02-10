@@ -62,7 +62,15 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
     modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
-    implementation("com.github.2894638479:KotlinMCUI:master-SNAPSHOT")
+    val localFiles = files(
+        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT.jar",
+        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT-sources.jar",
+    )
+    if(localFiles.all { it.exists() }) {
+        implementation(localFiles)
+    } else {
+        implementation("com.github.2894638479:KotlinMCUI:master-SNAPSHOT")
+    }
 }
 
 kotlin {
