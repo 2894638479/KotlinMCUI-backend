@@ -10,7 +10,7 @@ import io.github.u2894638479.kotlinmcui.dslBackendProvider
 import net.fabricmc.api.ModInitializer
 
 @OptIn(InternalBackend::class)
-class EntryPoint : ModInitializer, ModMenuApi {
+internal class EntryPoint : ModInitializer, ModMenuApi {
     override fun onInitialize() {
         dslBackendProvider = { defaultBackend }
         DslEntryService.loadServices()

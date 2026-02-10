@@ -29,7 +29,7 @@
             }
         ]
     },
-    "mixins": [],
+    "mixins": ["kotlinmcuibackend.mixin.json"],
     "accessWidener": "kotlinmcuibackend.accesswidener",
     "depends": {
         "fabricloader": "${loader_version_range}",

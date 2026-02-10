@@ -39,37 +39,27 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.enchantment.Enchantments
+import org.lwjgl.glfw.GLFW
 import java.io.File
 import java.io.IOException
 import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
+internal var eventModifier:Int = 0
+
+internal var horizontalScroller:((Double,Double,Double)-> Unit)? = null
+
 @InternalBackend
 val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
-    context(renderParam: GuiGraphics, ctx: DslScaleContext)
-    fun blitNineSliced(location: ResourceLocation?,rect: Rect,i:Int,j:Int,k:Int,l:Int,m:Int,n:Int) = stack {
-        location ?: return@stack
-        renderParam.pose().scale(ctx.scale.toFloat(),ctx.scale.toFloat(),1f)
-        val rect = rect.div(ctx.scale).toInt().ifEmpty { return@stack }
-        try {
-            renderParam.blitNineSliced(
-                location,
-                rect.left, rect.top, rect.width, rect.height,
-                i,j,k,l,m,n
-            )
-        } catch (_: Throwable) {}
-    }
-
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
         if(rect.isEmpty) return@withColor
         var textureY = 0
         if(highlighted) textureY += 20
         if(active) textureY += 40
-        blitNineSliced(
-            ResourceLocation.tryParse("textures/gui/slider.png"),
-            rect, 20, 4, 200, 20, 0, textureY
-        )
+        val uvOuter = Rect(0.px,textureY.px,200.px,textureY.px + 20.px)
+        val image = ImageHolder("minecraft:textures/gui/slider.png",256.px,256.px)
+        ImageStrategy.nineSlice(uvOuter,uvOuter.expand(-3.px),ctx.scale).render(rect,image,color)
     }
 
     private fun VertexConsumer.color(color: Color) = color(color.rInt,color.gInt,color.bInt,color.aInt)
@@ -90,31 +80,15 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     }
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
-    override fun renderContainer(rect: Rect) = blitNineSliced(
-        ResourceLocation.tryParse("textures/gui/demo_background.png"),
-        rect, 20, 4, 248, 166, 0, 0
-    )
+    override fun renderContainer(rect: Rect) = ImageStrategy.nineSlice(
+        Rect(0.px,0.px,248.px,166.px),Rect(3.px,3.px,245.px,163.px),ctx.scale
+    ).render(rect,ImageHolder("minecraft:textures/gui/demo_background.png",256.px,256.px),Color.WHITE)
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
-    override fun renderSlot(rect: Rect) {
-        fillRect(rect,Color(139,139,139))
-        fillRect(rect.copy().apply {
-            width = 1.scaled
-            height -= 1.scaled
-        },Color(55,55,55))
-        fillRect(rect.copy().apply {
-            width -= 1.scaled
-            height = 1.scaled
-        },Color(55,55,55))
-        fillRect(rect.copy().apply {
-            left = right - 1.scaled
-            top += 1.scaled
-        },Color.WHITE)
-        fillRect(rect.copy().apply {
-            left += 1.scaled
-            top = bottom - 1.scaled
-        },Color.WHITE)
-    }
+    override fun renderSlot(rect: Rect) = ImageStrategy.nineSlice(
+        Rect(7.px,141.px,25.px,159.px),Rect(8.px,142.px,24.px,158.px),ctx.scale
+    ).render(rect,ImageHolder("minecraft:textures/gui/container/inventory.png",256.px,256.px),Color.WHITE)
+
 
     private val missingImage = ImageHolder("missing",16.px,16.px)
 
@@ -123,6 +97,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(item))
         if(!item.isPresent) renderImage(missingImage,rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
         else stack {
+            RenderSystem.disableDepthTest()
             val itemStack = item.get().defaultInstance.also {
                 it.count = count
                 if(damage != null) it.damageValue = (damage * it.maxDamage).roundToInt()
@@ -133,6 +108,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             renderParam.pose().scale((rect.width / 16.0).toFloat(),(rect.height / 16.0).toFloat(),1f)
             renderParam.renderItem(itemStack, 0, 0)
             renderParam.renderItemDecorations(Minecraft.getInstance().font,itemStack,0,0)
+            RenderSystem.enableDepthTest()
         }
     }
 
@@ -359,6 +335,8 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         }
     }
 
+    override fun isKeyDown(key: Int) = GLFW.glfwGetKey(Minecraft.getInstance().window.window,key) == GLFW.GLFW_PRESS
+    override fun isMouseDown(mouse: Int) = GLFW.glfwGetMouseButton(Minecraft.getInstance().window.window,mouse) == GLFW.GLFW_PRESS
     override val guiScale get() = Minecraft.getInstance().window.guiScale
     override val isInWorld get() = Minecraft.getInstance().level != null
     override fun create(title:String, dslFunction: DslTopFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
@@ -374,21 +352,28 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                 Minecraft.getInstance().execute { Minecraft.getInstance().setScreen(parent) }
             },dslFunction)
             val dslScreen = createDataStore().dslScreen
-            override fun onClose() = dslScreen.close()
+            override fun onClose() {
+                horizontalScroller = null
+                dslScreen.close()
+            }
             override fun keyPressed(i: Int, j: Int, k: Int): Boolean {
-                if(dslScreen.run { keyDown(i, j, EventModifier(k)) }) return true
+                if(dslScreen.run { context(EventModifier(k)) { keyDown(i, j) }}) return true
                 return super.keyPressed(i, j, k)
             }
             override fun keyReleased(i: Int, j: Int, k: Int): Boolean {
-                if(dslScreen.run { keyUp(i, j, EventModifier(k)) }) return true
+                if(dslScreen.run { context(EventModifier(k)) { keyUp(i, j) }}) return true
                 return super.keyReleased(i, j, k)
             }
             override fun mouseClicked(d: Double, e: Double, i: Int): Boolean {
-                if(dslScreen.run { mouseDown(Position(d.scaled, e.scaled), MouseButton.from(i)) }) return true
+                if(dslScreen.run { context(EventModifier(eventModifier)) {
+                    mouseDown(Position(d.scaled, e.scaled), MouseButton.from(i))
+                }}) return true
                 return super.mouseClicked(d, e, i)
             }
             override fun mouseReleased(d: Double, e: Double, i: Int): Boolean {
-                if(dslScreen.run { mouseUp(Position(d.scaled, e.scaled), MouseButton.from(i)) }) return true
+                if(dslScreen.run {  context(EventModifier(eventModifier)) {
+                    mouseUp(Position(d.scaled, e.scaled), MouseButton.from(i)) }
+                }) return true
                 return super.mouseReleased(d, e, i)
             }
             override fun mouseMoved(d: Double, e: Double) {
@@ -396,7 +381,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                 super.mouseMoved(d, e)
             }
             override fun mouseScrolled(d: Double, e: Double, f: Double): Boolean {
-                val remain = dslScreen.run { mouseScroll(Position(d.scaled, e.scaled), f) }
+                val remain = dslScreen.run { mouseScrollVertical(Position(d.scaled, e.scaled), f) }
                 if(remain == 0.0) return true
                 return super.mouseScrolled(d, e, remain)
             }
@@ -416,6 +401,9 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
             override fun init() {
                 super.init()
+                horizontalScroller = { x,y,f ->
+                    dslScreen.run { mouseScrollHorizontal(Position(x.px, y.px), f) }
+                }
                 dslScreen.init(Rect().also {
                     it.width = width.px * guiScale
                     it.height = height.px * guiScale
