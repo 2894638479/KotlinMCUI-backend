@@ -36,7 +36,7 @@ val kff_version: String by project
 base.archivesName = archives_base_name
 
 group = maven_group
-version = "$mod_version+$minecraft_version"
+version = "$mod_version+$loader+$minecraft_version"
 
 repositories {
     mavenCentral()
