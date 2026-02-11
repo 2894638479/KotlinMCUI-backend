@@ -29,6 +29,7 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.font.glyphs.BakedGlyph
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil
 import net.minecraft.client.renderer.LightTexture
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.texture.DynamicTexture
@@ -87,6 +88,14 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         Rect(7.px,141.px,25.px,159.px),Rect(8.px,142.px,24.px,158.px),ctx.scale
     ).render(rect,ImageHolder("minecraft:textures/gui/container/inventory.png",256.px,256.px),Color.WHITE)
 
+    context(renderParam: GuiGraphics, ctx: DslScaleContext)
+    override fun renderTooltip(rect: Rect) {
+        stack {
+            renderParam.pose().scale(ctx.scale.toFloat(),ctx.scale.toFloat(),1f)
+            val rect = rect.div(ctx.scale).toInt().ifEmpty { return }
+            TooltipRenderUtil.renderTooltipBackground(renderParam,rect.left,rect.top,rect.width,rect.height,0)
+        }
+    }
 
     private val missingImage = ImageHolder("missing",16.px,16.px)
 
