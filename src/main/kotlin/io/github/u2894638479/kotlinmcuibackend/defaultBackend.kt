@@ -228,7 +228,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
         if(image.isEmpty) return
         val rect = rect.toInt().ifEmpty { return }
         renderParam.innerBlit(
-            ResourceLocation.tryParse(image.id),
+            ResourceLocation.tryParse(image.id) ?: return,
             rect.left,rect.right,rect.top,rect.bottom,0,
             (uv.left / image.width).toFloat(),(uv.right / image.width).toFloat(),
             (uv.top / image.height).toFloat(),(uv.bottom / image.height).toFloat(),
