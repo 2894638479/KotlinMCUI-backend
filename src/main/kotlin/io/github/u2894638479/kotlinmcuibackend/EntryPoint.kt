@@ -1,22 +1,34 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import com.terraformersmc.modmenu.api.ConfigScreenFactory
-import com.terraformersmc.modmenu.api.ModMenuApi
 import io.github.u2894638479.kotlinmcui.InternalBackend
 import io.github.u2894638479.kotlinmcui.backend.DslEntryPage
 import io.github.u2894638479.kotlinmcui.backend.DslEntryService
 import io.github.u2894638479.kotlinmcui.backend.createScreen
 import io.github.u2894638479.kotlinmcui.dslBackendProvider
-import net.fabricmc.api.ModInitializer
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.Screen
+import net.minecraftforge.api.distmarker.Dist
+import net.minecraftforge.client.ConfigScreenHandler
+import net.minecraftforge.fml.DistExecutor
+import net.minecraftforge.fml.ModLoadingContext
+import net.minecraftforge.fml.common.Mod
 
 @OptIn(InternalBackend::class)
-internal class EntryPoint : ModInitializer, ModMenuApi {
-    override fun onInitialize() {
+@Mod("kotlinmcuibackend")
+internal class EntryPoint {
+    init {
         dslBackendProvider = { defaultBackend }
         DslEntryService.loadServices()
         DslEntryService.services.forEach { it.initialize() }
-    }
-    override fun getModConfigScreenFactory() = ConfigScreenFactory {
-        defaultBackend.createScreen { DslEntryPage() }.screen
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT){
+            Runnable {
+                ModLoadingContext.get().registerExtensionPoint(
+                    ConfigScreenHandler.ConfigScreenFactory::class.java) {
+                    ConfigScreenHandler.ConfigScreenFactory { _: Minecraft, _: Screen ->
+                        defaultBackend.createScreen { DslEntryPage() }.screen
+                    }
+                }
+            }
+        }
     }
 }
