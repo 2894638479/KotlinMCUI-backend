@@ -3,7 +3,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("fabric-loom")
+    id("net.minecraftforge.gradle")
+    id("idea")
+    id("org.spongepowered.mixin") version "0.7.+"
     kotlin("jvm")
     id("me.modmuss50.mod-publish-plugin") version "0.8.1"
 }
@@ -31,8 +33,7 @@ val minecraft_version_range: String by project
 val loader: String by project
 val loader_version: String by project
 val loader_version_range: String by project
-val fabric_kotlin_version: String by project
-val mod_menu_version: String by project
+val kff_version: String by project
 
 base.archivesName = archives_base_name
 
@@ -41,14 +42,10 @@ version = "$mod_version+$loader+$minecraft_version"
 
 repositories {
     mavenCentral()
-    maven("https://maven.fabricmc.net/")
-    maven("https://maven.terraformersmc.com")
+    maven("https://thedarkcolour.github.io/KotlinForForge/")
     maven("https://jitpack.io")
 }
 
-loom {
-    accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
-}
 
 configurations.all {
     resolutionStrategy {
@@ -56,12 +53,37 @@ configurations.all {
     }
 }
 
+
+minecraft {
+    mappings("official",minecraft_version)
+    copyIdeResources = true
+    accessTransformer(file("src/main/resources/META-INF/accesstransformer.cfg"))
+
+    runs {
+        create("client") {
+            isClient = true
+        }
+        configureEach {
+            workingDirectory = "run"
+            args += "-mixin.config=kotlinmcuibackend.mixin.json"
+            mods {
+                create(mod_id) {
+                    source(sourceSets.main.get())
+                }
+            }
+        }
+    }
+}
+
+mixin {
+    add(sourceSets.main.get(), "${mod_id}.refmap.json")
+    config("${mod_id}.mixin.json")
+}
+
 dependencies {
-    minecraft("com.mojang:minecraft:$minecraft_version")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:$loader_version")
-    modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
-    modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
+    minecraft("net.minecraftforge:forge:${minecraft_version}-${loader_version}")
+    implementation("thedarkcolour:kotlinforforge:${kff_version}")
+    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     val localFiles = files(
         "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar",
         "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar",
@@ -74,7 +96,7 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
     compilerOptions {
         jvmTarget.set(JvmTarget.valueOf("JVM_$java_version"))
     }
@@ -84,10 +106,15 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.valueOf("VERSION_$java_version")
     targetCompatibility = JavaVersion.valueOf("VERSION_$java_version")
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+}
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(java_version.toInt())
 }
 
 val sourcesJar: Jar by tasks
-sourcesJar.exclude("fabric.mod.json")
+sourcesJar.exclude("META-INF/mods.toml")
+sourcesJar.exclude("pack.mcmeta")
 sourcesJar.from("LICENSE")
 
 tasks.jar {
@@ -123,11 +150,11 @@ tasks.processResources {
         "loader" to loader,
         "loader_version" to loader_version,
         "loader_version_range" to loader_version_range,
-        "fabric_kotlin_version" to fabric_kotlin_version,
-        "mod_menu_version" to mod_menu_version,
+        "kff_version" to kff_version,
     )
     inputs.properties(map)
-    filesMatching("fabric.mod.json") { expand(map) }
+    filesMatching("META-INF/mods.toml") { expand(map) }
+    filesMatching("pack.mcmeta") { expand(map) }
 }
 
 val tag = "v$version".replace('+','-')
@@ -142,8 +169,8 @@ tasks.configureEach {
 }
 
 publishMods {
-    file = tasks.remapJar.get().archiveFile
-    additionalFiles = files(sourcesJar.archiveFile,tasks.jar)
+    file = tasks.jar.get().archiveFile
+    additionalFiles = files(sourcesJar.archiveFile)
     changelog = "no changelog."
     type = when {
         mod_version.contains("SNAPSHOT",true) -> ALPHA
@@ -157,8 +184,7 @@ publishMods {
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         projectId = "FjVgWB2Y"
-        optional("modmenu")
-        requires("fabric-language-kotlin","kotlinmcui")
+        requires("kotlin-for-forge","kotlinmcui")
         minecraftVersionRange {
             start = minecraft_version
             end = minecraft_version
@@ -167,8 +193,7 @@ publishMods {
     curseforge {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1460645"
-        optional("modmenu")
-        requires("fabric-language-kotlin","kotlinmcui")
+        requires("kotlin-for-forge","kotlinmcui")
         clientRequired = true
         serverRequired = false
         minecraftVersionRange {
