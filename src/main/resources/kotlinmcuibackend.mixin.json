@@ -6,6 +6,7 @@
     "injectors": {
         "defaultRequire": 1
     },
+    "refmap": "kotlinmcuibackend.refmap.json",
     "client": [
         "MouseHandlerMixin"
     ]
