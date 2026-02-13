@@ -36,7 +36,7 @@
         "minecraft": "${minecraft_version_range}",
         "java": "*",
         "fabric-language-kotlin": ">=${fabric_kotlin_version}",
-        "kotlinmcui": "^${kotlinmcui_version}"
+        "kotlinmcui": "*"
     },
     "suggests": {
         "modmenu": "${mod_menu_version}"
