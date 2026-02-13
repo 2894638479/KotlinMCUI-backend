@@ -85,13 +85,13 @@ dependencies {
     implementation("thedarkcolour:kotlinforforge:${kff_version}")
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     val localFiles = files(
-        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT.jar",
-        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT-sources.jar",
+        "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar",
+        "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar",
     )
     if(localFiles.all { it.exists() }) {
         implementation(localFiles)
     } else {
-        implementation("com.github.2894638479:KotlinMCUI:master-SNAPSHOT")
+        implementation("com.github.2894638479:KotlinMCUI:v$kotlinmcui_version")
     }
 }
 
@@ -157,20 +157,56 @@ tasks.processResources {
     filesMatching("pack.mcmeta") { expand(map) }
 }
 
+val tag = "v$version".replace('+','-')
+
+val shouldPublish by lazy {
+    providers.exec {
+        commandLine("git", "ls-remote", "--tags", "origin", "refs/tags/$tag")
+    }.standardOutput.asText.get().isBlank()
+}
+tasks.configureEach {
+    if(group == "publishing") enabled = shouldPublish
+}
+
 publishMods {
     file = tasks.jar.get().archiveFile
     additionalFiles = files(sourcesJar.archiveFile)
-    changelog = ""
-    type = ALPHA
-    displayName = "KotlinMCUI-backend ${project.version}"
+    changelog = "no changelog."
+    type = when {
+        mod_version.contains("SNAPSHOT",true) -> ALPHA
+        mod_version.contains("alpha",true) -> ALPHA
+        mod_version.contains("beta",true) -> BETA
+        else -> STABLE
+    }
+    displayName = "KotlinMCUI-backend $loader-$mod_version"
     modLoaders.add(loader)
 
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         projectId = "FjVgWB2Y"
+        optional("fabric-language-kotlin","kotlin-for-forge","modmenu")
+        requires("kotlinmcui")
         minecraftVersionRange {
             start = minecraft_version
             end = minecraft_version
         }
+    }
+    curseforge {
+        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
+        projectId = "1460645"
+        optional("fabric-language-kotlin","kotlin-for-forge","modmenu")
+//        requires("kotlinmcui")
+        clientRequired = true
+        serverRequired = false
+        minecraftVersionRange {
+            start = minecraft_version
+            end = minecraft_version
+        }
+    }
+    github {
+        accessToken = providers.environmentVariable("GITHUB_TOKEN")
+        repository = "2894638479/KotlinMCUI-backend"
+        commitish = "$loader-$minecraft_version"
+        tagName = tag
     }
 }
