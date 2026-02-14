@@ -360,11 +360,14 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             fun DslBackend<*,*>.createDataStore() = DslDataStore(this,title, {
                 Minecraft.getInstance().execute { Minecraft.getInstance().setScreen(parent) }
             },dslFunction)
-            val dslScreen = createDataStore().dslScreen
+            val dataStore = createDataStore()
+            val dslScreen = dataStore.dslScreen
             override fun onClose() {
                 horizontalScroller = null
                 dslScreen.close()
             }
+
+            override fun isPauseScreen() = dataStore.pauseGame
             override fun keyPressed(i: Int, j: Int, k: Int): Boolean {
                 if(dslScreen.run { context(EventModifier(k)) { keyDown(i, j) }}) return true
                 return super.keyPressed(i, j, k)
