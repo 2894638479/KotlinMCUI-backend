@@ -142,8 +142,8 @@ tasks.configureEach {
 }
 
 publishMods {
-    file = tasks.jar.get().archiveFile
-    additionalFiles = files(sourcesJar.archiveFile)
+    file = tasks.remapJar.get().archiveFile
+    additionalFiles = files(sourcesJar.archiveFile,tasks.jar)
     changelog = "no changelog."
     type = when {
         mod_version.contains("SNAPSHOT",true) -> ALPHA
