@@ -16,6 +16,13 @@ import io.github.u2894638479.kotlinmcui.glfw.MouseButton
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.*
+import io.github.u2894638479.kotlinmcui.math.rect.Rect
+import io.github.u2894638479.kotlinmcui.math.rect.div
+import io.github.u2894638479.kotlinmcui.math.rect.expand
+import io.github.u2894638479.kotlinmcui.math.rect.isEmpty
+import io.github.u2894638479.kotlinmcui.math.rect.toDouble
+import io.github.u2894638479.kotlinmcui.math.rect.toFloat
+import io.github.u2894638479.kotlinmcui.math.rect.toInt
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
@@ -416,10 +423,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                 horizontalScroller = { x,y,f ->
                     dslScreen.run { mouseScrollHorizontal(Position(x.px, y.px), f) }
                 }
-                dslScreen.init(Rect().also {
-                    it.width = width.px * guiScale
-                    it.height = height.px * guiScale
-                })
+                dslScreen.init(Rect(right = width.scaled, bottom = height.scaled))
             }
         }
     }

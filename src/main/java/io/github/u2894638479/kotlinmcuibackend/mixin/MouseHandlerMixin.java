@@ -24,7 +24,7 @@ public class MouseHandlerMixin {
         if (l == Minecraft.getInstance().getWindow().getWindow()) {
             double f = (minecraft.options.discreteMouseScroll().get() ? Math.signum(d) : d) * minecraft.options.mouseWheelSensitivity().get();
             var func = io.github.u2894638479.kotlinmcuibackend.DefaultBackendKt.getHorizontalScroller();
-            if (func != null) func.invoke(xpos, ypos, f);
+            if (func != null && f != 0) func.invoke(xpos, ypos, f);
         }
     }
 
