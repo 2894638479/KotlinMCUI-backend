@@ -376,44 +376,46 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
             override fun isPauseScreen() = dataStore.pauseGame
             override fun keyPressed(i: Int, j: Int, k: Int): Boolean {
-                if(dslScreen.run { context(EventModifier(k)) { keyDown(i, j) }}) return true
+                if(context(EventModifier(k)) { dslScreen.keyDown(i, j) }) return true
                 return super.keyPressed(i, j, k)
             }
             override fun keyReleased(i: Int, j: Int, k: Int): Boolean {
-                if(dslScreen.run { context(EventModifier(k)) { keyUp(i, j) }}) return true
+                if(context(EventModifier(k)) { dslScreen.keyUp(i, j) }) return true
                 return super.keyReleased(i, j, k)
             }
             override fun mouseClicked(d: Double, e: Double, i: Int): Boolean {
-                if(dslScreen.run { context(EventModifier(eventModifier)) {
-                    mouseDown(Position(d.scaled, e.scaled), MouseButton.from(i))
-                }}) return true
+                if(context(EventModifier(eventModifier),Position(d.scaled, e.scaled)) {
+                    dslScreen.mouseDown(MouseButton.from(i))
+                }) return true
                 return super.mouseClicked(d, e, i)
             }
             override fun mouseReleased(d: Double, e: Double, i: Int): Boolean {
-                if(dslScreen.run {  context(EventModifier(eventModifier)) {
-                    mouseUp(Position(d.scaled, e.scaled), MouseButton.from(i)) }
+                if(context(EventModifier(eventModifier),Position(d.scaled, e.scaled)) {
+                    dslScreen.mouseUp(MouseButton.from(i))
                 }) return true
                 return super.mouseReleased(d, e, i)
             }
             override fun mouseMoved(d: Double, e: Double) {
-                dslScreen.run { mouseMove(Position(d.scaled, e.scaled)) }
+                context(Position(d.scaled, e.scaled)) { dslScreen.mouseMove() }
                 super.mouseMoved(d, e)
             }
             override fun mouseScrolled(d: Double, e: Double, f: Double): Boolean {
-                val remain = dslScreen.run { mouseScrollVertical(Position(d.scaled, e.scaled), f) }
+                val remain = context(Position(d.scaled, e.scaled)) {
+                    dslScreen.mouseScrollVertical(f)
+                }
                 if(remain == 0.0) return true
                 return super.mouseScrolled(d, e, remain)
             }
 
             override fun charTyped(c: Char, i: Int): Boolean {
-                if(dslScreen.run { charTyped(c, EventModifier(i)) }) return true
+                if(context(EventModifier(i)) { dslScreen.charTyped(c) }) return true
                 return super.charTyped(c, i)
             }
             override fun render(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
-                context(guiGraphics) {
+                context(guiGraphics,Position(i.scaled, j.scaled)) {
                     stack {
                         guiGraphics.pose().scale(1/guiScale.toFloat(),1/guiScale.toFloat(),1f)
-                        dslScreen.run { render(Position(i.scaled, j.scaled)) }
+                        dslScreen.render()
                     }
                 }
             }
@@ -421,7 +423,9 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
             override fun init() {
                 super.init()
                 horizontalScroller = { x,y,f ->
-                    dslScreen.run { mouseScrollHorizontal(Position(x.px, y.px), f) }
+                    context(Position(x.px, y.px)) {
+                        dslScreen.mouseScrollHorizontal(f)
+                    }
                 }
                 dslScreen.init(Rect(right = width.scaled, bottom = height.scaled))
             }

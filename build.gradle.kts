@@ -20,7 +20,7 @@ val mod_github: String by project
 val mod_issues: String by project
 val mod_mcmod: String by project
 val mod_modrinth: String by project
-val mod_cuseforge: String by project
+val mod_curseforge: String by project
 val icon: String by project
 
 val kotlin_version: String by project
@@ -113,7 +113,7 @@ tasks.processResources {
         "mod_issues" to mod_issues,
         "mod_mcmod" to mod_mcmod,
         "mod_modrinth" to mod_modrinth,
-        "mod_cuseforge" to mod_cuseforge,
+        "mod_curseforge" to mod_curseforge,
         "icon" to icon,
         "kotlin_version" to kotlin_version,
         "java_version" to java_version,
