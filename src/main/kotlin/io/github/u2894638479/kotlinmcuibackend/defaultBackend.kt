@@ -15,14 +15,11 @@ import io.github.u2894638479.kotlinmcui.glfw.EventModifier
 import io.github.u2894638479.kotlinmcui.glfw.MouseButton
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
-import io.github.u2894638479.kotlinmcui.math.*
-import io.github.u2894638479.kotlinmcui.math.rect.Rect
-import io.github.u2894638479.kotlinmcui.math.rect.div
-import io.github.u2894638479.kotlinmcui.math.rect.expand
-import io.github.u2894638479.kotlinmcui.math.rect.isEmpty
-import io.github.u2894638479.kotlinmcui.math.rect.toDouble
-import io.github.u2894638479.kotlinmcui.math.rect.toFloat
-import io.github.u2894638479.kotlinmcui.math.rect.toInt
+import io.github.u2894638479.kotlinmcui.math.Color
+import io.github.u2894638479.kotlinmcui.math.Measure
+import io.github.u2894638479.kotlinmcui.math.Position
+import io.github.u2894638479.kotlinmcui.math.px
+import io.github.u2894638479.kotlinmcui.math.rect.*
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
@@ -31,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
@@ -50,6 +48,7 @@ import net.minecraft.world.item.enchantment.Enchantments
 import org.lwjgl.glfw.GLFW
 import java.io.File
 import java.io.IOException
+import java.nio.file.Path
 import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
@@ -148,6 +147,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
     }
 
     override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
+    override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
 
     context(renderParam: GuiGraphics)
     private inline fun stack(block:()->Unit) {
@@ -406,7 +406,6 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                 if(remain == 0.0) return true
                 return super.mouseScrolled(d, e, remain)
             }
-
             override fun charTyped(c: Char, i: Int): Boolean {
                 if(context(EventModifier(i)) { dslScreen.charTyped(c) }) return true
                 return super.charTyped(c, i)
@@ -418,6 +417,10 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
                         dslScreen.render()
                     }
                 }
+            }
+            override fun onFilesDrop(list: List<Path>) {
+                if(context(dataStore.mouse) { dslScreen.dropFiles(list) }) return
+                return super.onFilesDrop(list)
             }
 
             override fun init() {
