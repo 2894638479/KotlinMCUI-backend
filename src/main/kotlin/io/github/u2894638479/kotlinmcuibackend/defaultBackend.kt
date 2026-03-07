@@ -45,6 +45,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.world.item.enchantment.Enchantments
+import net.minecraftforge.fml.loading.FMLConfig
 import org.lwjgl.glfw.GLFW
 import java.io.File
 import java.io.IOException
@@ -148,6 +149,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
+    override val configFolder get() = FMLConfig.defaultConfigPath().let { Path.of(it) }
 
     context(renderParam: GuiGraphics)
     private inline fun stack(block:()->Unit) {
