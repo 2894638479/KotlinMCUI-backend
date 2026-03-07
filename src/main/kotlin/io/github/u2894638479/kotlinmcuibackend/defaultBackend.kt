@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
@@ -148,6 +149,7 @@ val defaultBackend = object : DslBackend<GuiGraphics, Screen> {
 
     override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
+    override val configFolder get() = FabricLoader.getInstance().configDir
 
     context(renderParam: GuiGraphics)
     private inline fun stack(block:()->Unit) {
