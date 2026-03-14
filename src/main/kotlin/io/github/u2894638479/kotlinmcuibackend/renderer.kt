@@ -3,13 +3,16 @@ package io.github.u2894638479.kotlinmcuibackend
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
+import com.mojang.math.Axis
 import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
+import io.github.u2894638479.kotlinmcui.context.unscaled
 import io.github.u2894638479.kotlinmcui.dslLogger
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.Measure
+import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
 import io.github.u2894638479.kotlinmcui.math.rect.*
 import io.github.u2894638479.kotlinmcui.text.DslFont
@@ -35,7 +38,7 @@ import java.io.IOException
 import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
-internal val renderer = object: DslBackendRenderer <GuiGraphics> {
+internal val renderer = object: DslBackendRenderer<GuiGraphics> {
     override val guiScale get() = Minecraft.getInstance().window.guiScale
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
@@ -110,9 +113,27 @@ internal val renderer = object: DslBackendRenderer <GuiGraphics> {
         (rect / guiScale).toInt().run {
             renderParam.enableScissor(left,top,right,bottom)
         }
-        block()
-        renderParam.flush()
-        renderParam.disableScissor()
+        try {
+            block()
+        } finally {
+            renderParam.flush()
+            renderParam.disableScissor()
+        }
+    }
+
+    context(renderParam: GuiGraphics)
+    override fun withRotation(origin: Position, rad: Double, block: () -> Unit) {
+        val x = origin.x.pixelsOrElse<Double> { return }
+        val y = origin.y.pixelsOrElse<Double> { return }
+        renderParam.pose().pushPose()
+        renderParam.pose().translate(x,y,0.0)
+        renderParam.pose().mulPose(Axis.ZP.rotation(rad.toFloat()))
+        renderParam.pose().translate(-x,-y,0.0)
+        try {
+            block()
+        } finally {
+            renderParam.pose().popPose()
+        }
     }
 
     context(renderParam: GuiGraphics)
