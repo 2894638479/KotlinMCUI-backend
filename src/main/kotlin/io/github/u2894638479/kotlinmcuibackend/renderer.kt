@@ -15,6 +15,10 @@ import io.github.u2894638479.kotlinmcui.math.Measure
 import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
 import io.github.u2894638479.kotlinmcui.math.rect.*
+import io.github.u2894638479.kotlinmcui.math.transform.Rotate
+import io.github.u2894638479.kotlinmcui.math.transform.Scale
+import io.github.u2894638479.kotlinmcui.math.transform.Transform
+import io.github.u2894638479.kotlinmcui.math.transform.Translate
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
@@ -122,14 +126,16 @@ internal val renderer = object: DslBackendRenderer<GuiGraphics> {
     }
 
     context(renderParam: GuiGraphics)
-    override fun withRotation(origin: Position, rad: Double, block: () -> Unit) {
-        val x = origin.x.pixelsOrElse<Double> { return }
-        val y = origin.y.pixelsOrElse<Double> { return }
+    override fun withTransform(transform: Transform, block: () -> Unit) {
         renderParam.pose().pushPose()
-        renderParam.pose().translate(x,y,0.0)
-        renderParam.pose().mulPose(Axis.ZP.rotation(rad.toFloat()))
-        renderParam.pose().translate(-x,-y,0.0)
         try {
+            transform.baseTransforms.asReversed().forEach {
+                when(it) {
+                    is Translate -> renderParam.pose().translate(it.x.raw,it.y.raw,0.0)
+                    is Rotate -> renderParam.pose().mulPose(Axis.ZP.rotation(it.rad.toFloat()))
+                    is Scale -> renderParam.pose().scale(it.x.toFloat(),it.y.toFloat(),1f)
+                }
+            }
             block()
         } finally {
             renderParam.pose().popPose()
