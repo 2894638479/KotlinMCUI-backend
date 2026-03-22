@@ -3,22 +3,16 @@ package io.github.u2894638479.kotlinmcuibackend
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
-import com.mojang.math.Axis
 import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
-import io.github.u2894638479.kotlinmcui.context.unscaled
 import io.github.u2894638479.kotlinmcui.dslLogger
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.Measure
-import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
 import io.github.u2894638479.kotlinmcui.math.rect.*
-import io.github.u2894638479.kotlinmcui.math.transform.Rotate
-import io.github.u2894638479.kotlinmcui.math.transform.Scale
 import io.github.u2894638479.kotlinmcui.math.transform.Transform
-import io.github.u2894638479.kotlinmcui.math.transform.Translate
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
@@ -37,6 +31,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.enchantment.Enchantments
+import org.joml.Matrix4f
 import java.io.File
 import java.io.IOException
 import javax.imageio.ImageIO
@@ -128,14 +123,17 @@ internal val renderer = object: DslBackendRenderer<GuiGraphics> {
     context(renderParam: GuiGraphics)
     override fun withTransform(transform: Transform, block: () -> Unit) {
         renderParam.pose().pushPose()
-        try {
-            transform.baseTransforms.asReversed().forEach {
-                when(it) {
-                    is Translate -> renderParam.pose().translate(it.x.raw,it.y.raw,0.0)
-                    is Rotate -> renderParam.pose().mulPose(Axis.ZP.rotation(it.rad.toFloat()))
-                    is Scale -> renderParam.pose().scale(it.x.toFloat(),it.y.toFloat(),1f)
-                }
+        renderParam.pose().mulPoseMatrix(
+            transform.run {
+                Matrix4f(
+                    m00,m10,0f,m20,
+                    m01,m11,0f,m21,
+                    0f,0f,1f,0f,
+                    m02,m12,0f,m22
+                )
             }
+        )
+        try {
             block()
         } finally {
             renderParam.pose().popPose()
