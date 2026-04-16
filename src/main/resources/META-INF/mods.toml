@@ -1,5 +1,5 @@
-modLoader = "kotlinforforge"
-loaderVersion = "[0,)"
+modLoader = "klf"
+loaderVersion = "[${klf_version},)"
 issueTrackerURL = "${mod_issues}"
 license = "${license}"
 

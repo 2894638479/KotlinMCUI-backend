@@ -33,7 +33,7 @@ val minecraft_version_range: String by project
 val loader: String by project
 val loader_version: String by project
 val loader_version_range: String by project
-val kff_version: String by project
+val klf_version: String by project
 
 base.archivesName = archives_base_name
 
@@ -42,7 +42,7 @@ version = "$mod_version+$loader+$minecraft_version"
 
 repositories {
     mavenCentral()
-    maven("https://thedarkcolour.github.io/KotlinForForge/")
+    maven("https://repo.nyon.dev/releases")
     maven("https://jitpack.io")
 }
 
@@ -82,7 +82,7 @@ mixin {
 
 dependencies {
     minecraft("net.minecraftforge:forge:${minecraft_version}-${loader_version}")
-    implementation("thedarkcolour:kotlinforforge:${kff_version}")
+    implementation("dev.nyon:KotlinLangForge:$klf_version-k$kotlin_version-2.0+$loader")
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
     val localFiles = files(
         "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar",
@@ -151,7 +151,7 @@ tasks.processResources {
         "loader" to loader,
         "loader_version" to loader_version,
         "loader_version_range" to loader_version_range,
-        "kff_version" to kff_version,
+        "klf_version" to klf_version,
     )
     inputs.properties(map)
     filesMatching("META-INF/mods.toml") { expand(map) }
