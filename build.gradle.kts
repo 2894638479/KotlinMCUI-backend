@@ -29,6 +29,7 @@ val kotlinmcui_version: String by project
 val minecraft_version: String by project
 val minecraft_version_range: String by project
 val loader: String by project
+val loader_suffix: String by project
 val loader_version: String by project
 val loader_version_range: String by project
 val fabric_kotlin_version: String by project
@@ -37,7 +38,7 @@ val mod_menu_version: String by project
 base.archivesName = archives_base_name
 
 group = maven_group
-version = "$mod_version+$loader+$minecraft_version"
+version = "$mod_version+$loader$loader_suffix+$minecraft_version"
 
 repositories {
     mavenCentral()
@@ -151,7 +152,7 @@ publishMods {
         mod_version.contains("beta",true) -> BETA
         else -> STABLE
     }
-    displayName = "KotlinMCUI-backend $loader-$mod_version"
+    displayName = "KotlinMCUI-backend $loader$loader_suffix-$mod_version"
     modLoaders.add(loader)
 
     modrinth {
@@ -179,7 +180,7 @@ publishMods {
     github {
         accessToken = providers.environmentVariable("GITHUB_TOKEN")
         repository = "2894638479/KotlinMCUI-backend"
-        commitish = "$loader-$minecraft_version"
+        commitish = "$loader$loader_suffix-$minecraft_version"
         tagName = tag
     }
 }
