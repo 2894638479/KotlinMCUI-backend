@@ -186,7 +186,7 @@ publishMods {
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         projectId = "FjVgWB2Y"
-        requires("kotlin-for-forge","kotlinmcui")
+        requires("kotlin-lang-forge","kotlinmcui")
         minecraftVersionRange {
             start = minecraft_version
             end = minecraft_version
@@ -195,7 +195,7 @@ publishMods {
     curseforge {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1460645"
-        requires("kotlin-for-forge","kotlinmcui")
+        requires("kotlin-lang-forge","kotlinmcui")
         clientRequired = true
         serverRequired = false
         minecraftVersionRange {
