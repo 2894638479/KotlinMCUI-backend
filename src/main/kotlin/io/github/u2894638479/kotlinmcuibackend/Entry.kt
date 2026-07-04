@@ -1,8 +1,6 @@
 package io.github.u2894638479.kotlinmcuibackend
 
 import io.github.u2894638479.kotlinmcui.InternalBackend
-import io.github.u2894638479.kotlinmcui.backend.DslEntryPage
-import io.github.u2894638479.kotlinmcui.backend.DslEntryService
 import io.github.u2894638479.kotlinmcui.backend.createScreen
 import io.github.u2894638479.kotlinmcui.dslBackendProvider
 import net.minecraft.client.Minecraft

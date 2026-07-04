@@ -2,19 +2,18 @@ package io.github.u2894638479.kotlinmcuibackend
 
 import io.github.u2894638479.kotlinmcui.DslDataStore
 import io.github.u2894638479.kotlinmcui.InternalBackend
-import io.github.u2894638479.kotlinmcui.backend.DslBackend
-import io.github.u2894638479.kotlinmcui.backend.DslBackendMetadata
-import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
-import io.github.u2894638479.kotlinmcui.backend.DslBackendScreenHolder
-import io.github.u2894638479.kotlinmcui.backend.DslBackendUtils
+import io.github.u2894638479.kotlinmcui.backend.*
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.context.scaled
-import io.github.u2894638479.kotlinmcui.functions.DslTopFunction
+import io.github.u2894638479.kotlinmcui.entry.DslEntryLoader
+import io.github.u2894638479.kotlinmcui.functions.DslFunction
 import io.github.u2894638479.kotlinmcui.glfw.EventModifier
 import io.github.u2894638479.kotlinmcui.glfw.MouseButton
 import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
-import io.github.u2894638479.kotlinmcui.math.rect.*
+import io.github.u2894638479.kotlinmcui.math.rect.Rect
+import io.github.u2894638479.kotlinmcui.scope.DslScope
+import io.github.u2894638479.kotlinmcui.scope.DslScopeImpl
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
@@ -25,13 +24,27 @@ internal var eventModifier:Int = 0
 
 internal var horizontalScroller:((Double,Double,Double)-> Unit)? = null
 
+internal var renderOverlay: (GuiGraphics) -> Unit = {}
+
 @InternalBackend
-val defaultBackend: DslBackend<GuiGraphics, Screen> = object : DslBackend<GuiGraphics, Screen>,
+object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     DslBackendRenderer<GuiGraphics> by renderer,
     DslBackendMetadata by metadata,
     DslBackendUtils by utils
 {
-    override fun create(title:String, dslFunction: DslTopFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
+    init {
+        val overlayScreen = create("Dsl Overlay") { DslEntryLoader.overlays() }.screen
+        renderOverlay = {
+            val mc = Minecraft.getInstance()
+            val i = (mc.mouseHandler.xpos() * mc.window.guiScaledWidth / mc.window.screenWidth).toInt()
+            val j = (mc.mouseHandler.ypos() * mc.window.guiScaledHeight / mc.window.screenHeight).toInt()
+            overlayScreen.width = mc.window.guiScaledWidth
+            overlayScreen.height = mc.window.guiScaledHeight
+            overlayScreen.init()
+            overlayScreen.render(it,i,j,mc.deltaFrameTime)
+        }
+    }
+    override fun create(title:String, dslFunction: DslFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
         override fun show(){
             Minecraft.getInstance().execute {
                 Minecraft.getInstance().setScreen(screen)

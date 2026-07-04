@@ -85,12 +85,11 @@ dependencies {
     minecraft("net.minecraftforge:forge:${minecraft_version}-${loader_version}")
     implementation("dev.nyon:KotlinLangForge:$klf_version-k$kotlin_version-2.0+$loader")
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
-    val localFiles = files(
-        "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar",
-        "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar",
-    )
-    if(localFiles.all { it.exists() }) {
-        implementation(localFiles)
+    val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
+    val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
+    if(jarFile.exists() && sourceFile.exists()) {
+        implementation(files(jarFile.path))
+        compileOnly(files(sourceFile.path))
     } else {
         implementation("com.github.2894638479:KotlinMCUI:v$kotlinmcui_version")
     }

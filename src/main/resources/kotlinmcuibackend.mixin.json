@@ -8,6 +8,7 @@
     },
     "refmap": "kotlinmcuibackend.refmap.json",
     "client": [
+        "GameRendererMixin",
         "MouseHandlerMixin"
     ]
 }

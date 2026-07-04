@@ -9,6 +9,7 @@ import io.github.u2894638479.kotlinmcui.math.px
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.minecraft.Util
@@ -31,6 +32,7 @@ internal val utils = object: DslBackendUtils {
         }
     }
 
+    override val mainDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
     override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
 
