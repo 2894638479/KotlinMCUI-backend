@@ -63,12 +63,11 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
     modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
-    val localFiles = files(
-        "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar",
-        "../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar",
-    )
-    if(localFiles.all { it.exists() }) {
-        implementation(localFiles)
+    val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
+    val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
+    if(jarFile.exists() && sourceFile.exists()) {
+        implementation(files(jarFile.path))
+        compileOnly(files(sourceFile.path))
     } else {
         implementation("com.github.2894638479:KotlinMCUI:v$kotlinmcui_version")
     }

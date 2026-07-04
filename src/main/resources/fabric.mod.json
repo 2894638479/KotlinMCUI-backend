@@ -18,13 +18,13 @@
     "entrypoints": {
         "client": [
             {
-                "value": "io.github.u2894638479.kotlinmcuibackend.EntryPoint",
+                "value": "io.github.u2894638479.kotlinmcuibackend.Entry",
                 "adapter": "kotlin"
             }
         ],
         "modmenu": [
             {
-                "value": "io.github.u2894638479.kotlinmcuibackend.EntryPoint",
+                "value": "io.github.u2894638479.kotlinmcuibackend.Entry",
                 "adapter": "kotlin"
             }
         ]
