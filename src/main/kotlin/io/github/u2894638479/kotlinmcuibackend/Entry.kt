@@ -2,23 +2,20 @@ package io.github.u2894638479.kotlinmcuibackend
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory
 import com.terraformersmc.modmenu.api.ModMenuApi
-import io.github.u2894638479.kotlinmcui.InternalBackend
-import io.github.u2894638479.kotlinmcui.backend.createScreen
-import io.github.u2894638479.kotlinmcui.dslBackendProvider
+import io.github.u2894638479.kotlinmcui.backend.InternalBackend
+import io.github.u2894638479.kotlinmcui.backend.dslBackendProvider
 import io.github.u2894638479.kotlinmcui.entry.DslEntryLoader
 import io.github.u2894638479.kotlinmcui.entry.DslEntryPage
 import net.fabricmc.api.ClientModInitializer
 
-@OptIn(InternalBackend::class)
+@InternalBackend
 class Entry : ClientModInitializer, ModMenuApi {
-    override fun onInitializeClient() = DslEntryLoader.run {
-        initCommon()
-        initClient()
-        initGui()
+    override fun onInitializeClient() {
         dslBackendProvider = { DefaultBackend }
+        DslEntryLoader.init(Metadata.environment)
     }
 
     override fun getModConfigScreenFactory() = ConfigScreenFactory {
-        DefaultBackend.createScreen { DslEntryPage() }.screen
+        DefaultBackend.create("DSL Entry") { DslEntryPage() }.screen
     }
 }

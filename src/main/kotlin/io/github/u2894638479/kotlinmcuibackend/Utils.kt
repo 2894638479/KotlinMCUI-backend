@@ -2,29 +2,24 @@ package io.github.u2894638479.kotlinmcuibackend
 
 import com.mojang.blaze3d.platform.NativeImage
 import io.github.u2894638479.kotlinmcui.backend.DslBackendUtils
-import io.github.u2894638479.kotlinmcui.dslLogger
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
+import io.github.u2894638479.kotlinmcui.logger.dslLogger
 import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.px
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.locale.Language
 import net.minecraft.sounds.SoundEvents
-import org.lwjgl.glfw.GLFW
 import java.io.File
 import java.io.IOException
 import javax.imageio.ImageIO
 
-internal val utils = object: DslBackendUtils {
-    override fun translate(key: String,vararg args: Any): String? {
+internal object Utils: DslBackendUtils {
+    override fun translate(key: String,vararg args: Any?): String? {
         return Language.getInstance().getOrDefault(key,null)?.let {
             if(args.isEmpty()) it else try {
                 return String.format(it,*Array(args.size) { args[it].toString() })
@@ -49,8 +44,6 @@ internal val utils = object: DslBackendUtils {
         Minecraft.getInstance().narrator.sayNow(string.ifEmpty { return })
     }
 
-    override fun isKeyDown(key: Int) = GLFW.glfwGetKey(Minecraft.getInstance().window.window,key) == GLFW.GLFW_PRESS
-    override fun isMouseDown(mouse: Int) = GLFW.glfwGetMouseButton(Minecraft.getInstance().window.window,mouse) == GLFW.GLFW_PRESS
     override val isInWorld get() = Minecraft.getInstance().level != null
 
     val imageMap = Object2ObjectOpenHashMap<File, ImageHolder>()

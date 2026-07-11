@@ -1,11 +1,9 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
 import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
-import io.github.u2894638479.kotlinmcui.dslLogger
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.Color
@@ -16,9 +14,6 @@ import io.github.u2894638479.kotlinmcui.math.transform.Transform
 import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
@@ -27,18 +22,16 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil
 import net.minecraft.client.renderer.LightTexture
 import net.minecraft.client.renderer.RenderType
-import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.enchantment.Enchantments
 import org.joml.Matrix4f
-import java.io.File
-import java.io.IOException
-import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 
-internal val renderer = object: DslBackendRenderer<GuiGraphics> {
+internal object Renderer: DslBackendRenderer<GuiGraphics> {
     override val guiScale get() = Minecraft.getInstance().window.guiScale
+    context(renderParam: GuiGraphics)
+    override fun flush() = renderParam.flush()
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
         if(rect.isEmpty) return@withColor
@@ -64,7 +57,6 @@ internal val renderer = object: DslBackendRenderer<GuiGraphics> {
         vc.vertex(matrix,rect.left,rect.bottom,0f).color(lb).endVertex()
         vc.vertex(matrix,rect.right,rect.bottom,0f).color(rb).endVertex()
         vc.vertex(matrix,rect.right,rect.top,0f).color(rt).endVertex()
-        renderParam.flush()
     }
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
@@ -108,14 +100,14 @@ internal val renderer = object: DslBackendRenderer<GuiGraphics> {
 
     context(renderParam: GuiGraphics)
     override fun withScissor(rect: Rect, block: () -> Unit) {
-        renderParam.flush()
+        flush()
         (rect / guiScale).toInt().run {
             renderParam.enableScissor(left,top,right,bottom)
         }
         try {
             block()
         } finally {
-            renderParam.flush()
+            flush()
             renderParam.disableScissor()
         }
     }
@@ -150,40 +142,13 @@ internal val renderer = object: DslBackendRenderer<GuiGraphics> {
         }
     }
 
-    val imageMap = Object2ObjectOpenHashMap<File, ImageHolder>()
-    private suspend fun loadImageFile(file: File): DynamicTexture? {
-        val image = try {
-            withContext(Dispatchers.IO) {
-                ImageIO.read(file)
-            }
-        } catch (e: IOException){
-            dslLogger.warn("load texture failed : $file")
-            dslLogger.warn(e.toString())
-            return null
-        }
-        val width = image.width
-        val height = image.height
-        val pixels = IntArray(width * height)
-        image.getRGB(0, 0, width, height, pixels, 0, width)
-
-        val native = NativeImage(width, height, false)
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                val argb = pixels[y * width + x]
-                val abgr = Color.ofARGB(argb).abgrInt
-                native.setPixelRGBA(x, y, abgr)
-            }
-        }
-        return DynamicTexture(native)
-    }
-
     context(renderParam: GuiGraphics)
     private var color: Color
-    get() = RenderSystem.getShaderColor().let { Color(it[0], it[1], it[2], it[3]) }
-    set(value) {
-        renderParam.flush()
-        RenderSystem.setShaderColor(value.rFloat, value.gFloat, value.bFloat,value.aFloat)
-    }
+        get() = RenderSystem.getShaderColor().let { Color(it[0], it[1], it[2], it[3]) }
+        set(value) {
+            flush()
+            RenderSystem.setShaderColor(value.rFloat, value.gFloat, value.bFloat,value.aFloat)
+        }
 
     context(renderParam: GuiGraphics)
     private inline fun withColor(color: Color, block:()->Unit) {
@@ -277,33 +242,34 @@ internal val renderer = object: DslBackendRenderer<GuiGraphics> {
 
         context(renderParam: GuiGraphics)
         override fun renderChar(char: DslRenderableChar, x: Measure, y: Measure, effectLeft: Measure, effectRight: Measure) {
-            val dslGlyph by lazy { glyph(char.code) }
+            val dslGlyph = glyph(char.code)
             val glyph = if(char.style.isObfuscated) fontSet.getRandomGlyph(dslGlyph.glyph) else fontSet.getGlyph(char.code)
             val scale = (char.size / lineHeight).toFloat()
-            stack {
-                renderParam.pose().scale(scale,scale,1f)
-                val x = x / scale
-                val y = y / scale
-                if(char.style.isShadowed) {
-                    val xShadow = x + dslGlyph.shadowOffset
-                    val yShadow = y + dslGlyph.shadowOffset
-                    val colorShadow = char.color.change(
-                        r = char.color.rInt / 4,
-                        g = char.color.gInt / 4,
-                        b = char.color.bInt / 4
-                    )
-                    renderCharOnly(char,glyph,xShadow,yShadow,colorShadow,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                    renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                    renderUnderline(char,dslGlyph,xShadow,yShadow,colorShadow)
-                    renderUnderline(char,dslGlyph,x,y,char.color)
-                    renderStrike(char,dslGlyph,xShadow,yShadow,colorShadow)
-                    renderStrike(char,dslGlyph,x,y,char.color)
-                } else {
-                    renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                    renderUnderline(char,dslGlyph,x,y,char.color)
-                    renderStrike(char,dslGlyph,x,y,char.color)
-                }
+            val right = glyph.right
+            val down = glyph.down
+            glyph.right = glyph.left + scale * (glyph.right - glyph.left)
+            glyph.down = glyph.up + scale * (glyph.down - glyph.up)
+            if(char.style.isShadowed) {
+                val xShadow = x + dslGlyph.shadowOffset
+                val yShadow = y + dslGlyph.shadowOffset
+                val colorShadow = char.color.change(
+                    r = char.color.rInt / 4,
+                    g = char.color.gInt / 4,
+                    b = char.color.bInt / 4
+                )
+                renderCharOnly(char,glyph,xShadow,yShadow,colorShadow,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
+                renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
+                renderUnderline(char,dslGlyph,xShadow,yShadow,colorShadow)
+                renderUnderline(char,dslGlyph,x,y,char.color)
+                renderStrike(char,dslGlyph,xShadow,yShadow,colorShadow)
+                renderStrike(char,dslGlyph,x,y,char.color)
+            } else {
+                renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
+                renderUnderline(char,dslGlyph,x,y,char.color)
+                renderStrike(char,dslGlyph,x,y,char.color)
             }
+            glyph.right = right
+            glyph.down = down
         }
     }
 }
