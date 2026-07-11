@@ -4,3 +4,9 @@ accessible method net/minecraft/client/gui/Font getFontSet (Lnet/minecraft/resou
 accessible field net/minecraft/client/gui/GuiGraphics bufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
 accessible method net/minecraft/client/gui/GuiGraphics innerBlit (Lnet/minecraft/resources/ResourceLocation;IIIIIFFFFFFFF)V
 accessible method net/minecraft/client/gui/screens/Screen init ()V
+accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph left F
+accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph right F
+accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph up F
+accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph down F
+mutable field net/minecraft/client/gui/font/glyphs/BakedGlyph right F
+mutable field net/minecraft/client/gui/font/glyphs/BakedGlyph down F
