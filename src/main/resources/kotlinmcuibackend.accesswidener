@@ -10,3 +10,6 @@ accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph up F
 accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph down F
 mutable field net/minecraft/client/gui/font/glyphs/BakedGlyph right F
 mutable field net/minecraft/client/gui/font/glyphs/BakedGlyph down F
+accessible field net/minecraft/client/gui/components/AbstractButton SPRITES Lnet/minecraft/client/gui/components/WidgetSprites;
+accessible field net/minecraft/client/gui/components/AbstractSliderButton HIGHLIGHTED_SPRITE Lnet/minecraft/resources/ResourceLocation;
+accessible field net/minecraft/client/gui/screens/Screen PANORAMA Lnet/minecraft/client/renderer/PanoramaRenderer;

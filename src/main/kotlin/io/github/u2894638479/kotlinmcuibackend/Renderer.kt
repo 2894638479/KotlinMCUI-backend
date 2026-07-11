@@ -22,9 +22,10 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil
 import net.minecraft.client.renderer.LightTexture
 import net.minecraft.client.renderer.RenderType
+import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.enchantment.Enchantments
 import org.joml.Matrix4f
 import kotlin.math.roundToInt
 
@@ -35,15 +36,15 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
         if(rect.isEmpty) return@withColor
-        var textureY = 0
-        if(highlighted) textureY += 20
-        if(active) textureY += 40
-        val uvOuter = Rect(0.px,textureY.px,200.px,textureY.px + 20.px)
-        val image = ImageHolder("minecraft:textures/gui/slider.png",256.px,256.px)
+        val imageId = "minecraft:textures/gui/sprites/widget/" +
+                (if(active) "button" else "slider") +
+                if(highlighted) "_highlighted.png" else ".png"
+        val image = ImageHolder(imageId,200.px,20.px)
+        val uvOuter = Rect(0.px,0.px,200.px,20.px)
         ImageStrategy.nineSlice(uvOuter,uvOuter.expand(-3.px),ctx.scale).render(rect,image,color)
     }
 
-    private fun VertexConsumer.color(color: Color) = color(color.rInt,color.gInt,color.bInt,color.aInt)
+    private fun VertexConsumer.color(color: Color) = setColor(color.rInt,color.gInt,color.bInt,color.aInt)
 
     context(renderParam:GuiGraphics)
     override fun fillRect(rect: Rect, color: Color) = fillRectGradient(rect,color,color,color,color)
@@ -53,10 +54,10 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
         val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
         val matrix = renderParam.pose().last().pose()
         val rect = rect.toFloat().ifEmpty { return }
-        vc.vertex(matrix,rect.left,rect.top,0f).color(lt).endVertex()
-        vc.vertex(matrix,rect.left,rect.bottom,0f).color(lb).endVertex()
-        vc.vertex(matrix,rect.right,rect.bottom,0f).color(rb).endVertex()
-        vc.vertex(matrix,rect.right,rect.top,0f).color(rt).endVertex()
+        vc.addVertex(matrix,rect.left,rect.top,0f).color(lt)
+        vc.addVertex(matrix,rect.left,rect.bottom,0f).color(lb)
+        vc.addVertex(matrix,rect.right,rect.bottom,0f).color(rb)
+        vc.addVertex(matrix,rect.right,rect.top,0f).color(rt)
     }
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
@@ -87,7 +88,7 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
             val itemStack = item.get().defaultInstance.also {
                 it.count = count
                 if(damage != null) it.damageValue = (damage * it.maxDamage).roundToInt()
-                if(enchanted) it.enchant(Enchantments.SHARPNESS,1)
+                if(enchanted) it.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)
             }
             val rect = rect.toDouble().ifEmpty { return@stack }
             renderParam.pose().translate(rect.left,rect.top,0.0)
@@ -115,7 +116,7 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
     context(renderParam: GuiGraphics)
     override fun withTransform(transform: Transform, block: () -> Unit) {
         renderParam.pose().pushPose()
-        renderParam.pose().mulPoseMatrix(
+        renderParam.pose().mulPose(
             transform.run {
                 Matrix4f(
                     m00,m10,0f,m20,
@@ -174,13 +175,15 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
         )
     }
 
+    val sc = object: Screen(Component.literal("")){
+        init { init(Minecraft.getInstance(),0,0) }
+    }
     context(ctx: DslScaleContext,renderParam: GuiGraphics)
     override fun renderDefaultBackground(rect: Rect) {
-        ImageStrategy.repeat(scale = ctx.scale).render(
-            rect,
-            ImageHolder(Screen.BACKGROUND_LOCATION.toString(), 32.px, 32.px),
-            Color(0.25,0.25,0.25)
-        )
+        sc.width = rect.width.pixelsOrElse { return }
+        sc.height = rect.height.pixelsOrElse { return }
+        sc.renderBackground(renderParam,0,0,
+            ((System.nanoTime() % 50_000_000) / 50_000_000.0).toFloat())
     }
 
     override fun getFont(name: String?) = defaultFont
