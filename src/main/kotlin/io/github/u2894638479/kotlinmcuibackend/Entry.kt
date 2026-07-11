@@ -16,10 +16,10 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory
 internal class Entry {
     init {
         if(FMLLoader.getDist() == Dist.CLIENT) {
+            dslBackendProvider = { DefaultBackend }
+            DslEntryLoader.init(Metadata.environment)
             ModList.get().getModContainerById("kotlinmcuibackend").ifPresent { container: ModContainer ->
                 container.registerExtensionPoint(IConfigScreenFactory::class.java) {
-                    dslBackendProvider = { DefaultBackend }
-                    DslEntryLoader.init(Metadata.environment)
                     IConfigScreenFactory { _, _ -> DefaultBackend.create("DSL Entry") { DslEntryPage() }.screen }
                 }
             }

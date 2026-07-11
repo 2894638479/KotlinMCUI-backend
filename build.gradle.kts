@@ -72,10 +72,6 @@ configurations.all {
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:${kff_version}")
-    val localFiles = files(
-        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT.jar",
-        "../kotlinmcui/build/libs/kotlinmcui-1.0.0-SNAPSHOT-sources.jar",
-    )
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {

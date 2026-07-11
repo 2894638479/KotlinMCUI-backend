@@ -22,7 +22,7 @@ internal object Input: DslBackendInput {
     override fun isMouseDown(mouse: Int) = GLFW.glfwGetMouseButton(Minecraft.getInstance().window.window,mouse) == GLFW_PRESS
 
     private inline val top get() = topComponent
-    private val scope = CoroutineScope(DefaultBackend.mainDispatcher)
+    private val scope = CoroutineScope(Utils.mainDispatcher)
     fun register(window: Long) {
         var cursorPosCallback: GLFWCursorPosCallbackI? = null
         cursorPosCallback = GLFW.glfwSetCursorPosCallback(window) { window,x,y ->
