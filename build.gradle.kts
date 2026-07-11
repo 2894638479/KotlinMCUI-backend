@@ -122,13 +122,6 @@ tasks.jar {
     finalizedBy("reobfJar")
 }
 
-
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.compilerOptions {
-    freeCompilerArgs.set(listOf("-Xcontext-parameters"))
-}
-
-
 tasks.processResources {
     val map = mapOf(
         "license" to license,
