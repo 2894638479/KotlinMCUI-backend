@@ -187,7 +187,7 @@ publishMods {
     curseforge {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1460645"
-        requires("kotlin-lang-forge","kotlinmcui")
+        requires("kotlinlangforge","kotlinmcui")
         clientRequired = true
         serverRequired = false
         minecraftVersionRange {
