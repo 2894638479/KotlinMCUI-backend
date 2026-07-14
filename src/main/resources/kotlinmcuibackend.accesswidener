@@ -1,15 +1,10 @@
-accessWidener	v2	named
+accessWidener	v2	official
 
-accessible method net/minecraft/client/gui/Font getFontSet (Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/gui/font/FontSet;
-accessible field net/minecraft/client/gui/GuiGraphics bufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
-accessible method net/minecraft/client/gui/GuiGraphics innerBlit (Lnet/minecraft/resources/ResourceLocation;IIIIIFFFFFFFF)V
-accessible method net/minecraft/client/gui/screens/Screen init ()V
-accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph left F
-accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph right F
-accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph up F
-accessible field net/minecraft/client/gui/font/glyphs/BakedGlyph down F
-mutable field net/minecraft/client/gui/font/glyphs/BakedGlyph right F
-mutable field net/minecraft/client/gui/font/glyphs/BakedGlyph down F
 accessible field net/minecraft/client/gui/components/AbstractButton SPRITES Lnet/minecraft/client/gui/components/WidgetSprites;
-accessible field net/minecraft/client/gui/components/AbstractSliderButton HIGHLIGHTED_SPRITE Lnet/minecraft/resources/ResourceLocation;
-accessible field net/minecraft/client/gui/screens/Screen PANORAMA Lnet/minecraft/client/renderer/PanoramaRenderer;
+accessible field net/minecraft/client/gui/GuiGraphicsExtractor guiRenderState Lnet/minecraft/client/renderer/state/gui/GuiRenderState;
+accessible class net/minecraft/client/gui/GuiGraphicsExtractor$ScissorStack
+accessible field net/minecraft/client/gui/GuiGraphicsExtractor scissorStack Lnet/minecraft/client/gui/GuiGraphicsExtractor$ScissorStack;
+accessible method net/minecraft/client/gui/GuiGraphicsExtractor innerBlit (Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V
+accessible method net/minecraft/client/gui/Font getGlyphSource (Lnet/minecraft/network/chat/FontDescription;)Lnet/minecraft/client/gui/GlyphSource;
+accessible method net/minecraft/network/chat/Style <init> (Lnet/minecraft/network/chat/TextColor;Ljava/lang/Integer;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Lnet/minecraft/network/chat/ClickEvent;Lnet/minecraft/network/chat/HoverEvent;Ljava/lang/String;Lnet/minecraft/network/chat/FontDescription;)V
+accessible method net/minecraft/world/item/ItemStack <init> (Lnet/minecraft/core/Holder;ILnet/minecraft/core/component/PatchedDataComponentMap;)V

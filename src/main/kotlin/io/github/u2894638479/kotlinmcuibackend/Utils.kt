@@ -8,19 +8,23 @@ import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.px
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.*
-import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.locale.Language
+import net.minecraft.resources.Identifier
 import net.minecraft.sounds.SoundEvents
+import net.minecraft.util.Util
 import java.io.File
 import java.io.IOException
+import java.util.Base64
 import javax.imageio.ImageIO
+import kotlin.streams.asSequence
 
 internal object Utils: DslBackendUtils {
     override fun translate(key: String,vararg args: Any?): String? {
-        return Language.getInstance().getOrDefault(key,null)?.let {
+        if(!Language.getInstance().has(key)) return null
+        return Language.getInstance().getOrDefault(key,key).let {
             if(args.isEmpty()) it else try {
                 return String.format(it,*Array(args.size) { args[it].toString() })
             } catch (_: Exception) { it }
@@ -41,13 +45,13 @@ internal object Utils: DslBackendUtils {
     }
 
     override fun narrate(string: String) {
-        Minecraft.getInstance().narrator.sayNow(string.ifEmpty { return })
+        Minecraft.getInstance().narrator.saySystemNow(string.ifEmpty { return })
     }
 
     override val isInWorld get() = Minecraft.getInstance().level != null
 
     val imageMap = Object2ObjectOpenHashMap<File, ImageHolder>()
-    private suspend fun loadImageFile(file: File): DynamicTexture? {
+    private suspend fun loadImageFile(file: File): () -> DynamicTexture? {
         val image = try {
             withContext(Dispatchers.IO) {
                 ImageIO.read(file)
@@ -55,7 +59,7 @@ internal object Utils: DslBackendUtils {
         } catch (e: IOException){
             dslLogger.warn("load texture failed : $file")
             dslLogger.warn(e.toString())
-            return null
+            return { null }
         }
         val width = image.width
         val height = image.height
@@ -67,10 +71,10 @@ internal object Utils: DslBackendUtils {
             for (x in 0 until width) {
                 val argb = pixels[y * width + x]
                 val abgr = Color.ofARGB(argb).abgrInt
-                native.setPixelRGBA(x, y, abgr)
+                native.setPixelABGR(x, y, abgr)
             }
         }
-        return DynamicTexture(native)
+        return { DynamicTexture({file.path},native) }
     }
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -80,14 +84,16 @@ internal object Utils: DslBackendUtils {
             imageMap[file] = ImageHolder.empty
             scope.launch {
                 val dynamic = loadImageFile(file)
-                val native = dynamic?.pixels ?: run {
-                    Minecraft.getInstance().execute {
-                        imageMap[file] = ImageHolder("missing",16.px,16.px)
-                    }
-                    return@launch
-                }
                 Minecraft.getInstance().execute {
-                    val location = Minecraft.getInstance().textureManager.register("dslimageid", dynamic)
+                    val dynamic = dynamic()
+                    val native = dynamic?.pixels ?: run {
+                        Minecraft.getInstance().execute {
+                            imageMap[file] = ImageHolder("missing",16.px,16.px)
+                        }
+                        return@execute
+                    }
+                    val location = Identifier.tryParse("kotlinmcui:${file.toString().chars().asSequence().joinToString("") { "d$it" }}")!!
+                    Minecraft.getInstance().textureManager.register(location, dynamic)
                     imageMap[file] = ImageHolder(location.toString(), native.width.px, native.height.px)
                 }
             }

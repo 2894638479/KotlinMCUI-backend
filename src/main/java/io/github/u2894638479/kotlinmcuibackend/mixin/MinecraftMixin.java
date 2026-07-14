@@ -19,6 +19,6 @@ public class MinecraftMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     void kotlinmcuibackend$registerEventCallbacks(GameConfig gameConfig, CallbackInfo ci) {
-        Input.INSTANCE.register(window.getWindow());
+        Input.INSTANCE.register(window.handle());
     }
 }

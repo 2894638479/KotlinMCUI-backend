@@ -1,9 +1,9 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
 import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
+import io.github.u2894638479.kotlinmcui.context.scaled
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.Color
@@ -15,27 +15,33 @@ import io.github.u2894638479.kotlinmcui.text.DslFont
 import io.github.u2894638479.kotlinmcui.text.DslGlyph
 import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.Font
-import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.font.glyphs.BakedGlyph
+import net.minecraft.client.gui.navigation.ScreenRectangle
+import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil
-import net.minecraft.client.renderer.LightTexture
-import net.minecraft.client.renderer.RenderType
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.state.gui.BlitRenderState
+import net.minecraft.client.renderer.state.gui.GlyphRenderState
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
-import org.joml.Matrix4f
+import net.minecraft.network.chat.FontDescription
+import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.TextColor
+import net.minecraft.resources.Identifier
+import net.minecraft.util.RandomSource
+import org.joml.Matrix3x2f
 import kotlin.math.roundToInt
 
 internal object Renderer: DslBackendRenderer<GuiGraphics> {
-    override val guiScale get() = Minecraft.getInstance().window.guiScale
+    override val guiScale get() = Minecraft.getInstance().window.guiScale.toDouble()
     context(renderParam: GuiGraphics)
-    override fun flush() = renderParam.flush()
+    override fun flush() = renderParam.nextStratum()
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
-    override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) = withColor(color){
-        if(rect.isEmpty) return@withColor
+    override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) {
+        if(rect.isEmpty) return
         val imageId = "minecraft:textures/gui/sprites/widget/" +
                 (if(active) "button" else "slider") +
                 if(highlighted) "_highlighted.png" else ".png"
@@ -51,19 +57,33 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
 
     context(renderParam: GuiGraphics)
     override fun fillRectGradient(rect: Rect, lt: Color, rt: Color, lb: Color, rb: Color) {
-        val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
-        val matrix = renderParam.pose().last().pose()
-        val rect = rect.toFloat().ifEmpty { return }
-        vc.addVertex(matrix,rect.left,rect.top,0f).color(lt)
-        vc.addVertex(matrix,rect.left,rect.bottom,0f).color(lb)
-        vc.addVertex(matrix,rect.right,rect.bottom,0f).color(rb)
-        vc.addVertex(matrix,rect.right,rect.top,0f).color(rt)
+        renderParam.guiRenderState.addGuiElement(object : GuiElementRenderState {
+            val pose = Matrix3x2f(renderParam.pose())
+            val rect = rect.toFloat()
+            val scissor = renderParam.scissorStack.peek()
+            override fun buildVertices(vertexConsumer: VertexConsumer) {
+                val rect = this.rect
+                vertexConsumer.addVertexWith2DPose(pose, rect.left,rect.top).color(lt)
+                vertexConsumer.addVertexWith2DPose(pose, rect.left,rect.bottom).color(lb)
+                vertexConsumer.addVertexWith2DPose(pose, rect.right,rect.bottom).color(rb)
+                vertexConsumer.addVertexWith2DPose(pose, rect.right,rect.top).color(rt)
+            }
+            override fun pipeline() = RenderPipelines.GUI
+            override fun textureSetup() = TextureSetup.noTexture()
+            override fun scissorArea() = scissor
+            override fun bounds(): ScreenRectangle? {
+                val rect = ScreenRectangle(this.rect.left.toInt(),this.rect.top.toInt(),this.rect.width.toInt(),this.rect.height.toInt()).transformMaxBounds(pose)
+                return rect.intersection(scissor ?: return rect)
+            }
+        })
     }
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
-    override fun renderContainer(rect: Rect) = ImageStrategy.nineSlice(
-        Rect(0.px,0.px,248.px,166.px),Rect(3.px,3.px,245.px,163.px),ctx.scale
-    ).render(rect,ImageHolder("minecraft:textures/gui/demo_background.png",256.px,256.px),Color.WHITE)
+    override fun renderContainer(rect: Rect) {
+        val image = ImageHolder("minecraft:textures/gui/container/blast_furnace.png",256.px,256.px)
+        ImageStrategy.nineSlice(Rect(0.px,0.px,176.px,166.px),Rect(3.px,3.px,173.px,163.px),ctx.scale).render(rect,image,Color.WHITE)
+        ImageStrategy.repeatUV(Rect(4.px,4.px,52.px,78.px),ctx.scale).render(rect.expand(-4.scaled),image,Color.WHITE)
+    }
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderSlot(rect: Rect) = ImageStrategy.nineSlice(
@@ -73,36 +93,36 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderTooltip(rect: Rect) {
         stack {
-            renderParam.pose().scale(ctx.scale.toFloat(),ctx.scale.toFloat(),1f)
+            renderParam.pose().scale(ctx.scale.toFloat(),ctx.scale.toFloat())
             val rect = rect.div(ctx.scale).toInt().ifEmpty { return }
-            TooltipRenderUtil.renderTooltipBackground(renderParam,rect.left,rect.top,rect.width,rect.height,0)
+            TooltipRenderUtil.extractTooltipBackground(renderParam,rect.left,rect.top,rect.width,rect.height,null)
         }
     }
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderItem(rect: Rect, item: String, count:Int, damage:Double?, enchanted: Boolean) {
-        val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(item))
+        val item = BuiltInRegistries.ITEM.getOptional(Identifier.tryParse(item))
         if(!item.isPresent) renderImage(ImageHolder("missing", 16.px, 16.px),rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
         else stack {
-            RenderSystem.disableDepthTest()
-            val itemStack = item.get().defaultInstance.also {
-                it.count = count
-                if(damage != null) it.damageValue = (damage * it.maxDamage).roundToInt()
-                if(enchanted) it.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)
-            }
-            val rect = rect.toDouble().ifEmpty { return@stack }
-            renderParam.pose().translate(rect.left,rect.top,0.0)
-            renderParam.pose().scale((rect.width / 16.0).toFloat(),(rect.height / 16.0).toFloat(),1f)
-            renderParam.renderItem(itemStack, 0, 0)
-            renderParam.renderItemDecorations(Minecraft.getInstance().font,itemStack,0,0)
-            RenderSystem.enableDepthTest()
+            val itemStack = try {
+                item.get().defaultInstance
+            } catch (_: Exception) { return }
+            itemStack.count = count
+            if(damage != null) itemStack.damageValue = (damage * itemStack.maxDamage).roundToInt()
+            if(enchanted) itemStack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)
+
+            val rect = rect.toFloat().ifEmpty { return@stack }
+            renderParam.pose().translate(rect.left,rect.top)
+            renderParam.pose().scale(rect.width / 16f,rect.height / 16f)
+            renderParam.item(itemStack, 0, 0)
+            renderParam.itemDecorations(Minecraft.getInstance().font,itemStack,0,0)
         }
     }
 
     context(renderParam: GuiGraphics)
     override fun withScissor(rect: Rect, block: () -> Unit) {
         flush()
-        (rect / guiScale).toInt().run {
+        rect.toInt().run {
             renderParam.enableScissor(left,top,right,bottom)
         }
         try {
@@ -115,106 +135,79 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
 
     context(renderParam: GuiGraphics)
     override fun withTransform(transform: Transform, block: () -> Unit) {
-        renderParam.pose().pushPose()
-        renderParam.pose().mulPose(
+        renderParam.pose().pushMatrix()
+        renderParam.pose().mul(
             transform.run {
-                Matrix4f(
-                    m00,m10,0f,m20,
-                    m01,m11,0f,m21,
-                    0f,0f,1f,0f,
-                    m02,m12,0f,m22
-                )
+                Matrix3x2f(m00,m10, m01,m11, m02,m12)
             }
         )
         try {
             block()
         } finally {
-            renderParam.pose().popPose()
+            renderParam.pose().popMatrix()
         }
     }
 
     context(renderParam: GuiGraphics)
     private inline fun stack(block:()->Unit) {
-        renderParam.pose().pushPose()
+        renderParam.pose().pushMatrix()
         try {
             block()
         } finally {
-            renderParam.pose().popPose()
-        }
-    }
-
-    context(renderParam: GuiGraphics)
-    private var color: Color
-        get() = RenderSystem.getShaderColor().let { Color(it[0], it[1], it[2], it[3]) }
-        set(value) {
-            flush()
-            RenderSystem.setShaderColor(value.rFloat, value.gFloat, value.bFloat,value.aFloat)
-        }
-
-    context(renderParam: GuiGraphics)
-    private inline fun withColor(color: Color, block:()->Unit) {
-        if(color == Color.WHITE) return block()
-        try {
-            this.color = color
-            block()
-        } finally {
-            this.color = Color.WHITE
+            renderParam.pose().popMatrix()
         }
     }
 
     context(renderParam: GuiGraphics)
     override fun renderImage(image: ImageHolder, rect: Rect, uv: Rect, color: Color) {
         if(image.isEmpty) return
-        val rect = rect.toInt().ifEmpty { return }
-        renderParam.innerBlit(
-            ResourceLocation.tryParse(image.id) ?: return,
-            rect.left,rect.right,rect.top,rect.bottom,0,
-            (uv.left / image.width).toFloat(),(uv.right / image.width).toFloat(),
-            (uv.top / image.height).toFloat(),(uv.bottom / image.height).toFloat(),
-            color.rFloat,color.gFloat,color.bFloat,color.aFloat
+        val rectI = rect.toInt().ifEmpty { return }
+        val location = Identifier.tryParse(image.id) ?: return
+        val texture = Minecraft.getInstance().textureManager.getTexture(location)
+        val pose = Matrix3x2f(renderParam.pose())
+        renderParam.guiRenderState.addGuiElement(
+            BlitRenderState(
+                RenderPipelines.GUI_TEXTURED,
+                TextureSetup.singleTexture(texture.textureView, texture.sampler),
+                pose,
+                rectI.left,rectI.top,rectI.right,rectI.bottom,
+                uv.left.div(image.width).toFloat(),
+                uv.right.div(image.width).toFloat(),
+                uv.top.div(image.height).toFloat(),
+                uv.bottom.div(image.height).toFloat(),
+                color.argbInt,
+                renderParam.scissorStack.peek()
+            )
         )
     }
 
     val sc = object: Screen(Component.literal("")){
-        init { init(Minecraft.getInstance(),0,0) }
+        init { init(0,0) }
     }
     context(ctx: DslScaleContext,renderParam: GuiGraphics)
     override fun renderDefaultBackground(rect: Rect) {
         sc.width = rect.width.pixelsOrElse { return }
         sc.height = rect.height.pixelsOrElse { return }
-        sc.renderBackground(renderParam,0,0,
-            ((System.nanoTime() % 50_000_000) / 50_000_000.0).toFloat())
+        try {
+            sc.extractBackground(renderParam,0,0,
+                ((System.nanoTime() % 50_000_000) / 50_000_000.0).toFloat())
+        } catch (e: IllegalStateException) {
+            if(e.message != "Can only blur once per frame") throw e
+        }
     }
 
     override fun getFont(name: String?) = defaultFont
 
     val defaultFont = object : DslFont<GuiGraphics> {
         val font get() = Minecraft.getInstance().font
-        val fontSet get() = font.getFontSet(Minecraft.DEFAULT_FONT)
+        val fontSet get() = font.getGlyphSource(FontDescription.DEFAULT)
         override val lineHeight get() = font.lineHeight.px
         override fun glyph(code: Int) = object : DslGlyph {
-            val glyph = fontSet.getGlyphInfo(code,false)
+            val bakedGlyph = fontSet.getGlyph(code)
+            val glyph get()= bakedGlyph.info()
             override val normalAdvance get() = glyph.advance.px
             override val boldOffset get() = glyph.boldOffset.px
             override val shadowOffset get() = glyph.shadowOffset.px
-        }
-
-        context(renderParam: GuiGraphics)
-        private fun renderCharOnly(char: DslRenderableChar, glyph: BakedGlyph, x: Measure, y: Measure, color: Color, boldOffset: Measure) {
-            if (char.code == ' '.code) return
-            glyph.render(
-                char.style.isItalic,
-                x.pixelsOrWarn { return },
-                y.pixelsOrWarn { return },
-                renderParam.pose().last().pose(),
-                renderParam.bufferSource.getBuffer(glyph.renderType(Font.DisplayMode.NORMAL)),
-                color.rFloat,
-                color.gFloat,
-                color.bFloat,
-                color.aFloat,
-                LightTexture.FULL_BRIGHT
-            )
-            if(boldOffset != 0.px) renderCharOnly(char,glyph,x + boldOffset,y,color,0.px)
         }
 
         context(renderParam: GuiGraphics)
@@ -244,35 +237,54 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
         }
 
         context(renderParam: GuiGraphics)
-        override fun renderChar(char: DslRenderableChar, x: Measure, y: Measure, effectLeft: Measure, effectRight: Measure) {
-            val dslGlyph = glyph(char.code)
-            val glyph = if(char.style.isObfuscated) fontSet.getRandomGlyph(dslGlyph.glyph) else fontSet.getGlyph(char.code)
-            val scale = (char.size / lineHeight).toFloat()
-            val right = glyph.right
-            val down = glyph.down
-            glyph.right = glyph.left + scale * (glyph.right - glyph.left)
-            glyph.down = glyph.up + scale * (glyph.down - glyph.up)
-            if(char.style.isShadowed) {
-                val xShadow = x + dslGlyph.shadowOffset
-                val yShadow = y + dslGlyph.shadowOffset
-                val colorShadow = char.color.change(
-                    r = char.color.rInt / 4,
-                    g = char.color.gInt / 4,
-                    b = char.color.bInt / 4
+        private fun renderCharOnly(char: DslRenderableChar, glyph: BakedGlyph, x: Measure, y: Measure, color: Color, boldOffset: Measure) {
+            if (char.code == ' '.code) return
+            val shadowColor = if(char.style.isShadowed) Color.BLACK else Color.TRANSPARENT_WHITE
+            val style = Style(
+                TextColor.fromRgb(color.argbInt),
+                shadowColor.argbInt,
+                char.style.isBold,
+                char.style.isItalic,
+                char.style.isUnderlined,
+                char.style.isStrikeThrough,
+                char.style.isObfuscated,
+                null,null,null, FontDescription.DEFAULT
+            )
+            val renderableGlyph = glyph.createGlyph(
+                0f,0f,
+                color.argbInt,
+                shadowColor.argbInt,
+                style,
+                glyph.info().boldOffset,
+                glyph.info().shadowOffset
+            ) ?: return
+            renderParam.guiRenderState.addGlyphToCurrentLayer(
+                GlyphRenderState(
+                    Matrix3x2f(renderParam.pose()),
+                    renderableGlyph,
+                    renderParam.scissorStack.peek()
                 )
-                renderCharOnly(char,glyph,xShadow,yShadow,colorShadow,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                renderUnderline(char,dslGlyph,xShadow,yShadow,colorShadow)
-                renderUnderline(char,dslGlyph,x,y,char.color)
-                renderStrike(char,dslGlyph,xShadow,yShadow,colorShadow)
-                renderStrike(char,dslGlyph,x,y,char.color)
-            } else {
-                renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                renderUnderline(char,dslGlyph,x,y,char.color)
-                renderStrike(char,dslGlyph,x,y,char.color)
+            )
+        }
+
+        private val random = RandomSource.create(293487214L)
+        context(renderParam: GuiGraphics)
+        override fun renderChar(char: DslRenderableChar, x: Measure, y: Measure, effectLeft: Measure, effectRight: Measure) {
+            stack {
+                renderParam.pose()
+                    .translate(x.pixelsOrElse { 0f },y.pixelsOrElse { 0f })
+                    .scale((char.size / lineHeight).toFloat())
+                val dslGlyph = glyph(char.code)
+                renderCharOnly(char,
+                    if(char.style.isObfuscated) fontSet.getRandomGlyph(random,dslGlyph.normalAdvance.pixelsOrElse { 0 }) else dslGlyph.bakedGlyph
+                    ,0.px,0.px,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
+                if(char.style.isShadowed) {
+                    renderStrike(char,dslGlyph, 1.px,1.px, Color.BLACK)
+                    renderUnderline(char,dslGlyph, 1.px,1.px, Color.BLACK)
+                }
+                renderStrike(char,dslGlyph, 0.px,0.px, char.color)
+                renderUnderline(char,dslGlyph, 0.px,0.px,char.color)
             }
-            glyph.right = right
-            glyph.down = down
         }
     }
 }

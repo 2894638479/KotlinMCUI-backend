@@ -18,8 +18,8 @@ import kotlin.io.path.Path
 internal object Input: DslBackendInput {
     override var mouse = Position(0.px,0.px)
         private set
-    override fun isKeyDown(key: Int) = GLFW.glfwGetKey(Minecraft.getInstance().window.window,key) == GLFW_PRESS
-    override fun isMouseDown(mouse: Int) = GLFW.glfwGetMouseButton(Minecraft.getInstance().window.window,mouse) == GLFW_PRESS
+    override fun isKeyDown(key: Int) = GLFW.glfwGetKey(Minecraft.getInstance().window.handle(),key) == GLFW_PRESS
+    override fun isMouseDown(mouse: Int) = GLFW.glfwGetMouseButton(Minecraft.getInstance().window.handle(),mouse) == GLFW_PRESS
 
     private inline val top get() = topComponent
     private val scope = CoroutineScope(DefaultBackend.mainDispatcher)
@@ -90,7 +90,7 @@ internal object Input: DslBackendInput {
             scope.launch {
                 context(EventModifier(mods)) {
                     if(!top.charTyped(Char(codepoint))) {
-                        charModsCallback!!(window,codepoint,mods)
+                        charModsCallback?.invoke(window,codepoint,mods)
                     }
                 }
             }

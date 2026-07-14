@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("fabric-loom")
+    id("net.fabricmc.fabric-loom")
     kotlin("jvm")
     id("me.modmuss50.mod-publish-plugin") version "0.8.1"
 }
@@ -59,11 +59,9 @@ configurations.all {
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraft_version")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:$loader_version")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:0.116.8+1.21.1")
-    modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
-    modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
+    implementation("net.fabricmc:fabric-loader:$loader_version")
+    implementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
+    implementation("com.terraformersmc:modmenu:$mod_menu_version")
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {
@@ -75,7 +73,7 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
     compilerOptions {
         jvmTarget.set(JvmTarget.valueOf("JVM_$java_version"))
     }
@@ -136,8 +134,8 @@ tasks.configureEach {
 }
 
 publishMods {
-    file = tasks.remapJar.get().archiveFile
-    additionalFiles = files(sourcesJar.archiveFile,tasks.jar)
+    file = tasks.jar.get().archiveFile
+    additionalFiles = files(sourcesJar.archiveFile)
     changelog = "no changelog."
     type = when {
         mod_version.contains("SNAPSHOT",true) -> ALPHA

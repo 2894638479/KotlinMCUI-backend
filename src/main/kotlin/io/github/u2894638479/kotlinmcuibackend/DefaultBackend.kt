@@ -4,13 +4,14 @@ import io.github.u2894638479.kotlinmcui.backend.*
 import io.github.u2894638479.kotlinmcui.container.DslChild
 import io.github.u2894638479.kotlinmcui.container.DslDataStore
 import io.github.u2894638479.kotlinmcui.container.topComponent
-import io.github.u2894638479.kotlinmcui.functions.DslFunction
+import io.github.u2894638479.kotlinmcui.dsl.DslFunction
 import io.github.u2894638479.kotlinmcui.math.px
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 
+typealias GuiGraphics = GuiGraphicsExtractor
 @InternalBackend
 object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     DslBackendRenderer<GuiGraphics> by Renderer,
@@ -44,6 +45,7 @@ object DefaultBackend : DslBackend<GuiGraphics, Screen>,
         override fun removed() { topComponent.children.remove(child!!) }
         override fun onClose() { dslScreen.close() }
         override fun isPauseScreen() = dataStore.pauseGame
+        override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {}
     }
 
     override fun create(title:String, dslFunction: DslFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
