@@ -126,9 +126,10 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
             renderParam.enableScissor(left,top,right,bottom)
         }
         try {
+            if(renderParam.scissorStack.peek()?.run { width <= 0 || height <= 0 } == true) return
             block()
-        } finally {
             flush()
+        } finally {
             renderParam.disableScissor()
         }
     }
