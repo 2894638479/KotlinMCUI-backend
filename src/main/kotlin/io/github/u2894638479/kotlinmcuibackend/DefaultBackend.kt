@@ -34,10 +34,10 @@ object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     }
 
     private class WrappedScreen(title: String,dslFunction: DslFunction): Screen(Component.literal(title)) {
-        val parent = mc.screen
+        val parent = mc.gui.screen()
         val dataStore = DslDataStore(
             DefaultBackend, title,
-            { mc.execute { mc.setScreen(parent) } }, dslFunction
+            { mc.execute { mc.gui.setScreen(parent) } }, dslFunction
         )
         val dslScreen = dataStore.dslScreen
         var child: DslChild? = null
@@ -49,7 +49,7 @@ object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     }
 
     override fun create(title:String, dslFunction: DslFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
-        override fun show() { mc.execute { mc.setScreen(screen) } }
+        override fun show() { mc.execute { mc.gui.setScreen(screen) } }
         override val screen = WrappedScreen(title,dslFunction)
         override val dslScreen get() = screen.dslScreen
     }
