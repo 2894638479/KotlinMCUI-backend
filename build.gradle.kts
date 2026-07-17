@@ -155,7 +155,7 @@ publishMods {
         mod_version.contains("beta",true) -> BETA
         else -> STABLE
     }
-    displayName = "KotlinMCUI-backend $loader$loader_suffix-$mod_version"
+    displayName = "$branch-$mod_version"
     modLoaders.add(loader)
 
     modrinth {
