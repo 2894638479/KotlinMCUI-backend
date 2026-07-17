@@ -25,7 +25,9 @@ val icon: String by project
 
 val kotlin_version: String by project
 val java_version: String by project
+val toolkit_version: String by project
 val kotlinmcui_version: String by project
+val kotlinmcui_version_range: String by project
 val minecraft_version: String by project
 val minecraft_version_range: String by project
 val loader: String by project
@@ -38,7 +40,15 @@ val mod_menu_version: String by project
 base.archivesName = archives_base_name
 
 group = maven_group
-version = "$mod_version+$loader$loader_suffix+$minecraft_version"
+version = listOf(mod_version,loader,loader_suffix,minecraft_version)
+    .filter { it.isNotBlank() }
+    .joinToString(separator = "+")
+    .replace("neoforge","neo")
+
+val branch = listOf(loader,loader_suffix)
+    .filter { it.isNotBlank() }
+    .joinToString(separator = "+")
+    .plus("-$minecraft_version")
 
 repositories {
     mavenCentral()
@@ -75,7 +85,7 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(toolkit_version.toInt())
     compilerOptions {
         jvmTarget.set(JvmTarget.valueOf("JVM_$java_version"))
     }
@@ -112,6 +122,7 @@ tasks.processResources {
         "kotlin_version" to kotlin_version,
         "java_version" to java_version,
         "kotlinmcui_version" to kotlinmcui_version,
+        "kotlinmcui_version_range" to kotlinmcui_version_range,
         "minecraft_version" to minecraft_version,
         "minecraft_version_range" to minecraft_version_range,
         "loader" to loader,
@@ -173,7 +184,7 @@ publishMods {
     github {
         accessToken = providers.environmentVariable("GITHUB_TOKEN")
         repository = "2894638479/KotlinMCUI-backend"
-        commitish = "$loader$loader_suffix-$minecraft_version"
+        commitish = branch
         tagName = tag
     }
 }
