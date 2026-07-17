@@ -32,6 +32,6 @@ side = "BOTH"
 [[dependencies.${mod_id}]]
 modId = "kotlinmcui"
 mandatory = true
-versionRange = "[${kotlinmcui_version},2.0.0)"
+versionRange = "${kotlinmcui_version_range}"
 ordering = "NONE"
-side = "CLIENT"
+side = "BOTH"
