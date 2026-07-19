@@ -28,6 +28,13 @@ internal object Utils: DslBackendUtils {
     }
 
     override val mainDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
+
+    override fun updateImeCursor(x: Int, y: Int, lineHeight: Int) {
+        // GLFW 3.3 handles IME candidate window positioning automatically.
+        // Future backends (SDL3, etc.) should implement platform-specific IME
+        // positioning here using their native IME APIs.
+    }
+
     override var clipboard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
 
