@@ -28,7 +28,7 @@ internal object Utils: DslBackendUtils {
     }
 
     override val mainDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
-    override var clipBoard by Minecraft.getInstance().keyboardHandler::clipboard
+    override var clipboard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
 
     override fun forceLoadLocalImage(file: File): ImageHolder {
