@@ -10,6 +10,7 @@ import io.github.u2894638479.kotlinmcui.logger.dslLogger
 import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
 import io.github.u2894638479.kotlinmcui.math.rect.Rect
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
@@ -18,45 +19,46 @@ import org.lwjgl.glfw.GLFW.*
 import kotlin.io.path.Path
 
 /**
- * GLFW key code -> framework key, for every key the framework names.
+ * GLFW key code -> framework [Key] code, for the keys the framework names.
  *
- * Anything else is passed through in the framework's custom range: [Key.custom] only accepts
- * codes from [Key.CUSTOM_RANGE_START] up, so a raw GLFW code (space, punctuation, numpad …)
- * must not reach it.
+ * A code the framework does not name passes through unchanged: that is what its custom range
+ * is for, and `Key(code)` performs no validation. Building the mapped entries with `Key.custom`
+ * would be wrong twice over - its argument is a framework code, not a GLFW code, and it
+ * rejects anything below the custom range.
  */
-private val glfwToKey: Map<Int, Key> = buildMap {
-    put(GLFW_KEY_ENTER, Key.ENTER)
-    put(GLFW_KEY_ESCAPE, Key.ESCAPE)
-    put(GLFW_KEY_BACKSPACE, Key.BACKSPACE)
-    put(GLFW_KEY_DELETE, Key.DELETE)
-    put(GLFW_KEY_TAB, Key.TAB)
-    put(GLFW_KEY_LEFT, Key.LEFT)
-    put(GLFW_KEY_RIGHT, Key.RIGHT)
-    put(GLFW_KEY_UP, Key.UP)
-    put(GLFW_KEY_DOWN, Key.DOWN)
-    put(GLFW_KEY_HOME, Key.HOME)
-    put(GLFW_KEY_END, Key.END)
-    put(GLFW_KEY_PAGE_UP, Key.PAGE_UP)
-    put(GLFW_KEY_PAGE_DOWN, Key.PAGE_DOWN)
-    put(GLFW_KEY_INSERT, Key.INSERT)
-    put(GLFW_KEY_LEFT_SHIFT, Key.LEFT_SHIFT)
-    put(GLFW_KEY_RIGHT_SHIFT, Key.RIGHT_SHIFT)
-    put(GLFW_KEY_LEFT_CONTROL, Key.LEFT_CTRL)
-    put(GLFW_KEY_RIGHT_CONTROL, Key.RIGHT_CTRL)
-    put(GLFW_KEY_LEFT_ALT, Key.LEFT_ALT)
-    put(GLFW_KEY_RIGHT_ALT, Key.RIGHT_ALT)
-    put(GLFW_KEY_LEFT_SUPER, Key.LEFT_SUPER)
-    put(GLFW_KEY_RIGHT_SUPER, Key.RIGHT_SUPER)
-    for (i in 0..25) put(GLFW_KEY_A + i, Key.custom(Key.A.code + i))
-    for (i in 0..9) put(GLFW_KEY_0 + i, Key.custom(Key.N0.code + i))
-    for (i in 0..24) put(GLFW_KEY_F1 + i, Key.custom(Key.F1.code + i))
+private val glfwToKey = Int2IntOpenHashMap().apply {
+    put(GLFW_KEY_ENTER, Key.ENTER.code)
+    put(GLFW_KEY_ESCAPE, Key.ESCAPE.code)
+    put(GLFW_KEY_BACKSPACE, Key.BACKSPACE.code)
+    put(GLFW_KEY_DELETE, Key.DELETE.code)
+    put(GLFW_KEY_TAB, Key.TAB.code)
+    put(GLFW_KEY_LEFT, Key.LEFT.code)
+    put(GLFW_KEY_RIGHT, Key.RIGHT.code)
+    put(GLFW_KEY_UP, Key.UP.code)
+    put(GLFW_KEY_DOWN, Key.DOWN.code)
+    put(GLFW_KEY_HOME, Key.HOME.code)
+    put(GLFW_KEY_END, Key.END.code)
+    put(GLFW_KEY_PAGE_UP, Key.PAGE_UP.code)
+    put(GLFW_KEY_PAGE_DOWN, Key.PAGE_DOWN.code)
+    put(GLFW_KEY_INSERT, Key.INSERT.code)
+    put(GLFW_KEY_LEFT_SHIFT, Key.LEFT_SHIFT.code)
+    put(GLFW_KEY_RIGHT_SHIFT, Key.RIGHT_SHIFT.code)
+    put(GLFW_KEY_LEFT_CONTROL, Key.LEFT_CTRL.code)
+    put(GLFW_KEY_RIGHT_CONTROL, Key.RIGHT_CTRL.code)
+    put(GLFW_KEY_LEFT_ALT, Key.LEFT_ALT.code)
+    put(GLFW_KEY_RIGHT_ALT, Key.RIGHT_ALT.code)
+    put(GLFW_KEY_LEFT_SUPER, Key.LEFT_SUPER.code)
+    put(GLFW_KEY_RIGHT_SUPER, Key.RIGHT_SUPER.code)
+    for (c in GLFW_KEY_A..GLFW_KEY_Z) put(c, Key.A.code + (c - GLFW_KEY_A))
+    for (c in GLFW_KEY_0..GLFW_KEY_9) put(c, Key.N0.code + (c - GLFW_KEY_0))
+    for (c in GLFW_KEY_F1..GLFW_KEY_F25) put(c, Key.F1.code + (c - GLFW_KEY_F1))
 }
 
-/** The reverse of [glfwToKey], for [Input.isKeyDown]. */
-private val keyToGlfw: Map<Int, Int> = glfwToKey.entries.associate { (glfw, key) -> key.code to glfw }
+/** [Key] code -> GLFW key code, for [Input.isKeyDown]. */
+private val keyToGlfw = Int2IntOpenHashMap().also { reverse -> glfwToKey.forEach { k, v -> reverse.put(v, k) } }
 
-private fun glfwKeyToKey(glfwCode: Int) =
-    glfwToKey[glfwCode] ?: Key.custom(Key.CUSTOM_RANGE_START + glfwCode)
+/** Translate a GLFW key code to the framework's platform-neutral [Key]. */
+private fun glfwKeyToKey(glfwCode: Int) = Key(glfwToKey.getOrDefault(glfwCode,glfwCode))
 
 /** Translate a GLFW modifier bitmask to [KeyModifiers]. */
 private fun glfwModsToKeyModifiers(mods: Int) = KeyModifiers(
@@ -74,7 +76,7 @@ internal object Input : DslBackendInput {
         private set
 
     override fun isKeyDown(key: Key): Boolean {
-        val glfwCode = keyToGlfw[key.code] ?: (key.code - Key.CUSTOM_RANGE_START)
+        val glfwCode = keyToGlfw.getOrDefault(key.code,key.code)
         return GLFW.glfwGetKey(Minecraft.getInstance().window.window, glfwCode) == GLFW_PRESS
     }
 
@@ -93,9 +95,9 @@ internal object Input : DslBackendInput {
     private val scope = CoroutineScope(Utils.mainDispatcher)
 
     fun register(window: Long) {
-        // Logged so a failed mixin application is visible: without it the game still starts,
-        // the framework just never receives any input.
-        dslLogger.info("input callbacks registered")
+        // Touch the key tables here on purpose: a malformed table then fails at startup, where
+        // the verification run sees it, instead of inside a callback on the first key press.
+        dslLogger.info("input callbacks registered (${glfwToKey.size} keys mapped)")
         var cursorPosCallback: GLFWCursorPosCallbackI? = null
         cursorPosCallback = GLFW.glfwSetCursorPosCallback(window) { window,x,y ->
             val mouse = Position(x.px,y.px)
