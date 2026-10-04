@@ -2,12 +2,14 @@ package io.github.u2894638479.kotlinmcuibackend
 
 import io.github.u2894638479.kotlinmcui.backend.DslBackendInput
 import io.github.u2894638479.kotlinmcui.backend.InternalBackend
-import io.github.u2894638479.kotlinmcui.container.topComponent
+import io.github.u2894638479.kotlinmcui.container.TopComponent
 import io.github.u2894638479.kotlinmcui.input.Key
 import io.github.u2894638479.kotlinmcui.input.KeyModifiers
 import io.github.u2894638479.kotlinmcui.input.MouseButton
+import io.github.u2894638479.kotlinmcui.logger.dslLogger
 import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
+import io.github.u2894638479.kotlinmcui.math.rect.Rect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
@@ -15,35 +17,46 @@ import org.lwjgl.glfw.*
 import org.lwjgl.glfw.GLFW.*
 import kotlin.io.path.Path
 
-/** Translate a GLFW key code to the framework's platform-neutral [Key]. */
-private fun glfwKeyToKey(glfwCode: Int): Key = when (glfwCode) {
-    GLFW_KEY_ENTER -> Key.ENTER
-    GLFW_KEY_ESCAPE -> Key.ESCAPE
-    GLFW_KEY_BACKSPACE -> Key.BACKSPACE
-    GLFW_KEY_DELETE -> Key.DELETE
-    GLFW_KEY_TAB -> Key.TAB
-    GLFW_KEY_LEFT -> Key.LEFT
-    GLFW_KEY_RIGHT -> Key.RIGHT
-    GLFW_KEY_UP -> Key.UP
-    GLFW_KEY_DOWN -> Key.DOWN
-    GLFW_KEY_HOME -> Key.HOME
-    GLFW_KEY_END -> Key.END
-    GLFW_KEY_PAGE_UP -> Key.PAGE_UP
-    GLFW_KEY_PAGE_DOWN -> Key.PAGE_DOWN
-    GLFW_KEY_INSERT -> Key.INSERT
-    GLFW_KEY_LEFT_SHIFT -> Key.LEFT_SHIFT
-    GLFW_KEY_RIGHT_SHIFT -> Key.RIGHT_SHIFT
-    GLFW_KEY_LEFT_CONTROL -> Key.LEFT_CTRL
-    GLFW_KEY_RIGHT_CONTROL -> Key.RIGHT_CTRL
-    GLFW_KEY_LEFT_ALT -> Key.LEFT_ALT
-    GLFW_KEY_RIGHT_ALT -> Key.RIGHT_ALT
-    GLFW_KEY_LEFT_SUPER -> Key.LEFT_SUPER
-    GLFW_KEY_RIGHT_SUPER -> Key.RIGHT_SUPER
-    in GLFW_KEY_A..GLFW_KEY_Z -> Key.custom(Key.A.code + (glfwCode - GLFW_KEY_A))
-    in GLFW_KEY_0..GLFW_KEY_9 -> Key.custom(Key.N0.code + (glfwCode - GLFW_KEY_0))
-    in GLFW_KEY_F1..GLFW_KEY_F25 -> Key.custom(Key.F1.code + (glfwCode - GLFW_KEY_F1))
-    else -> Key.custom(glfwCode)
+/**
+ * GLFW key code -> framework key, for every key the framework names.
+ *
+ * Anything else is passed through in the framework's custom range: [Key.custom] only accepts
+ * codes from [Key.CUSTOM_RANGE_START] up, so a raw GLFW code (space, punctuation, numpad …)
+ * must not reach it.
+ */
+private val glfwToKey: Map<Int, Key> = buildMap {
+    put(GLFW_KEY_ENTER, Key.ENTER)
+    put(GLFW_KEY_ESCAPE, Key.ESCAPE)
+    put(GLFW_KEY_BACKSPACE, Key.BACKSPACE)
+    put(GLFW_KEY_DELETE, Key.DELETE)
+    put(GLFW_KEY_TAB, Key.TAB)
+    put(GLFW_KEY_LEFT, Key.LEFT)
+    put(GLFW_KEY_RIGHT, Key.RIGHT)
+    put(GLFW_KEY_UP, Key.UP)
+    put(GLFW_KEY_DOWN, Key.DOWN)
+    put(GLFW_KEY_HOME, Key.HOME)
+    put(GLFW_KEY_END, Key.END)
+    put(GLFW_KEY_PAGE_UP, Key.PAGE_UP)
+    put(GLFW_KEY_PAGE_DOWN, Key.PAGE_DOWN)
+    put(GLFW_KEY_INSERT, Key.INSERT)
+    put(GLFW_KEY_LEFT_SHIFT, Key.LEFT_SHIFT)
+    put(GLFW_KEY_RIGHT_SHIFT, Key.RIGHT_SHIFT)
+    put(GLFW_KEY_LEFT_CONTROL, Key.LEFT_CTRL)
+    put(GLFW_KEY_RIGHT_CONTROL, Key.RIGHT_CTRL)
+    put(GLFW_KEY_LEFT_ALT, Key.LEFT_ALT)
+    put(GLFW_KEY_RIGHT_ALT, Key.RIGHT_ALT)
+    put(GLFW_KEY_LEFT_SUPER, Key.LEFT_SUPER)
+    put(GLFW_KEY_RIGHT_SUPER, Key.RIGHT_SUPER)
+    for (i in 0..25) put(GLFW_KEY_A + i, Key.custom(Key.A.code + i))
+    for (i in 0..9) put(GLFW_KEY_0 + i, Key.custom(Key.N0.code + i))
+    for (i in 0..24) put(GLFW_KEY_F1 + i, Key.custom(Key.F1.code + i))
 }
+
+/** The reverse of [glfwToKey], for [Input.isKeyDown]. */
+private val keyToGlfw: Map<Int, Int> = glfwToKey.entries.associate { (glfw, key) -> key.code to glfw }
+
+private fun glfwKeyToKey(glfwCode: Int) =
+    glfwToKey[glfwCode] ?: Key.custom(Key.CUSTOM_RANGE_START + glfwCode)
 
 /** Translate a GLFW modifier bitmask to [KeyModifiers]. */
 private fun glfwModsToKeyModifiers(mods: Int) = KeyModifiers(
@@ -61,24 +74,28 @@ internal object Input : DslBackendInput {
         private set
 
     override fun isKeyDown(key: Key): Boolean {
-        // Reverse-map Key back to a GLFW code for the query. Most keys map
-        // to a single GLFW code; letters/numbers/F-keys use offset mapping.
-        val glfwCode = when {
-            key.code in 30..55 -> GLFW_KEY_A + (key.code - Key.A.code)
-            key.code in 60..69 -> GLFW_KEY_0 + (key.code - Key.N0.code)
-            key.code in 70..94 -> GLFW_KEY_F1 + (key.code - Key.F1.code)
-            else -> key.code // Pass custom codes directly to GLFW
-        }
+        val glfwCode = keyToGlfw[key.code] ?: (key.code - Key.CUSTOM_RANGE_START)
         return GLFW.glfwGetKey(Minecraft.getInstance().window.window, glfwCode) == GLFW_PRESS
     }
 
     override fun isMouseDown(mouse: Int) =
         GLFW.glfwGetMouseButton(Minecraft.getInstance().window.window, mouse) == GLFW_PRESS
 
-    private inline val top get() = topComponent
-    private val scope = CoroutineScope(DefaultBackend.mainDispatcher)
+    override fun setPreeditArea(rect: Rect) {
+        // GLFW 3.3 (1.20.1) has no preedit-cursor API: the candidate window is positioned by
+        // the platform itself. A backend on a newer GLFW positions it here instead.
+    }
+
+    private inline val top get() = TopComponent
+    // Taken from Utils rather than DefaultBackend: DefaultBackend's class initializer reads
+    // Input's delegating fields, so going through it here would make the two classes
+    // initialize each other and leave one of them half-built.
+    private val scope = CoroutineScope(Utils.mainDispatcher)
 
     fun register(window: Long) {
+        // Logged so a failed mixin application is visible: without it the game still starts,
+        // the framework just never receives any input.
+        dslLogger.info("input callbacks registered")
         var cursorPosCallback: GLFWCursorPosCallbackI? = null
         cursorPosCallback = GLFW.glfwSetCursorPosCallback(window) { window,x,y ->
             val mouse = Position(x.px,y.px)
