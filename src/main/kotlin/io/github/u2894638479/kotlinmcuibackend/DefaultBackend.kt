@@ -3,7 +3,7 @@ package io.github.u2894638479.kotlinmcuibackend
 import io.github.u2894638479.kotlinmcui.backend.*
 import io.github.u2894638479.kotlinmcui.container.DslChild
 import io.github.u2894638479.kotlinmcui.container.DslDataStore
-import io.github.u2894638479.kotlinmcui.container.topComponent
+import io.github.u2894638479.kotlinmcui.container.TopComponent
 import io.github.u2894638479.kotlinmcui.dsl.DslFunction
 import io.github.u2894638479.kotlinmcui.math.px
 import net.minecraft.client.Minecraft
@@ -14,6 +14,7 @@ import net.minecraft.network.chat.Component
 @InternalBackend
 object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     DslBackendRenderer<GuiGraphics> by Renderer,
+    DslBackendTriangles<GuiGraphics> by Renderer,
     DslBackendMetadata by Metadata,
     DslBackendUtils by Utils,
     DslBackendInput by Input
@@ -21,14 +22,18 @@ object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     private inline val mc get() = Minecraft.getInstance()
 
     fun render(guiGraphics: GuiGraphics) {
+        // The HUD draws through the game's own GUI rendering, and while the loading overlay is
+        // up that state is not ready yet: drawing now submits against a pose the game has not
+        // set up, and (on backends that compile pipelines eagerly) can poison their cache.
+        if (mc.overlay != null) return
         context(guiGraphics, Input.mouse) {
-            topComponent.rect.apply {
+            TopComponent.rect.apply {
                 left = 0.px
                 top = 0.px
                 right = mc.window.screenWidth.px
                 bottom = mc.window.screenHeight.px
             }
-            topComponent.render()
+            TopComponent.render()
         }
     }
 
@@ -40,10 +45,13 @@ object DefaultBackend : DslBackend<GuiGraphics, Screen>,
         )
         val dslScreen = dataStore.dslScreen
         var child: DslChild? = null
-        override fun added() { child = topComponent.children.collect(dslScreen) }
-        override fun removed() { topComponent.children.remove(child!!) }
+        override fun added() { child = TopComponent.children.collect(dslScreen) }
+        override fun removed() { TopComponent.children.remove(child!!) }
         override fun onClose() { dslScreen.close() }
         override fun isPauseScreen() = dataStore.pauseGame
+        // The framework paints its own background (the defaultBackground decorator), so the
+        // vanilla dirt overlay must not end up underneath it.
+        override fun renderBackground(guiGraphics: GuiGraphics) {}
     }
 
     override fun create(title:String, dslFunction: DslFunction): DslBackendScreenHolder<Screen> = object: DslBackendScreenHolder<Screen> {
