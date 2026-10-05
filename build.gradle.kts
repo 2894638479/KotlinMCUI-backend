@@ -59,17 +59,16 @@ repositories {
 
 loom {
     accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
-    // Two ways to look at a page, both taking a page reference (an IDE reference, Class#method, or
-    // an entry class): previewClient opens it and leaves it on screen to be looked at, verifyClient
-    // photographs it and quits so a run can be gated on the exit code.
+    // One name and one run configuration. KOTLINMCUI_PREVIEW=<page reference> opens that page and
+    // leaves it on screen to be looked at; also setting KOTLINMCUI_PREVIEW_CAPTURE=true photographs
+    // it and quits instead, with a non-zero exit code when the reference, the page or the file
+    // failed. (The values go through the environment because Gradle reads `-Pkotlinmcui.preview` as
+    // a task name on this version.)
     runs {
-        create("verifyClient") {
-            client()
-            vmArg("-Dkotlinmcui.verify=" + (System.getenv("KOTLINMCUI_VERIFY") ?: "io.github.u2894638479.kotlinmcui.test.TestEntry\$TestPage"))
-        }
         create("previewClient") {
             client()
             vmArg("-Dkotlinmcui.preview=" + (System.getenv("KOTLINMCUI_PREVIEW") ?: ""))
+            vmArg("-Dkotlinmcui.preview.capture=" + (System.getenv("KOTLINMCUI_PREVIEW_CAPTURE") ?: "false"))
         }
     }
 }
