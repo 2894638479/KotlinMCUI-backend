@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap
 import kotlinx.coroutines.*
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
+import net.minecraft.client.Screenshot
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.sounds.SimpleSoundInstance
 import net.minecraft.locale.Language
@@ -17,6 +18,8 @@ import net.minecraft.sounds.SoundEvents
 import java.io.File
 import java.io.IOException
 import javax.imageio.ImageIO
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 internal object Utils: DslBackendUtils {
     override fun translate(key: String,vararg args: Any?): String? {
@@ -29,6 +32,33 @@ internal object Utils: DslBackendUtils {
     }
 
     override val mainDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
+
+    override suspend fun capture(fileName: String): File? = suspendCancellableCoroutine { continuation ->
+        val minecraft = Minecraft.getInstance()
+        val file = File(File(minecraft.gameDirectory,"screenshots"),fileName)
+        minecraft.execute {
+            try {
+                // The callback runs once the file is on disk, on the IO worker.
+                Screenshot.grab(minecraft.gameDirectory,fileName,minecraft.mainRenderTarget) { _ ->
+                    continuation.resume(file)
+                }
+            } catch (e: Throwable) {
+                continuation.resumeWithException(e)
+            }
+        }
+    }
+
+    override fun quit(exitCode: Int) {
+        val minecraft = Minecraft.getInstance()
+        if(exitCode == 0) {
+            minecraft.execute { minecraft.stop() }
+            return
+        }
+        // The game's own shutdown always reports success, and a run nobody can gate on is useless,
+        // so a failing preview leaves immediately instead.
+        dslLogger.error("preview: leaving with code $exitCode")
+        System.exit(exitCode)
+    }
 
     override var clipboard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)

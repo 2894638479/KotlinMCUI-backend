@@ -13,7 +13,6 @@ class Entry : ClientModInitializer, ModMenuApi {
         // Metadata is readable this early; the backend itself is published once the platform
         // can build screens (see MinecraftMixin), so nothing here may touch the client.
         DslRuntime.install({ Metadata })
-        Verify.init()
     }
 
     override fun getModConfigScreenFactory() = ConfigScreenFactory {
