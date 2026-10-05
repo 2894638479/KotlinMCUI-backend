@@ -78,7 +78,7 @@ internal object Utils: DslBackendUtils {
 
     override val isInWorld get() = Minecraft.getInstance().level != null
 
-    val imageMap = Object2ObjectOpenHashMap<File, ImageHolder>()
+    private val imageMap = Object2ObjectOpenHashMap<File, ImageHolder>()
     private suspend fun loadImageFile(file: File): DynamicTexture? {
         val image = try {
             withContext(Dispatchers.IO) {

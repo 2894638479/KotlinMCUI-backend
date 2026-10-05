@@ -94,6 +94,8 @@ internal object Input : DslBackendInput {
     // initialize each other and leave one of them half-built.
     private val scope = CoroutineScope(Utils.mainDispatcher)
 
+    // Called from MinecraftMixin (Java) once the window exists. Kotlin visibility does not reach
+    // Java, so this member is the deliberate entry point of the input path.
     fun register(window: Long) {
         // Touch the key tables here on purpose: a malformed table then fails at startup, where
         // the verification run sees it, instead of inside a callback on the first key press.

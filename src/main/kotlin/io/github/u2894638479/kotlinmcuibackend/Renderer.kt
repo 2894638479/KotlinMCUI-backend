@@ -260,7 +260,7 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
 
     override fun getFont(name: String?) = defaultFont
 
-    val defaultFont = object : DslFont<GuiGraphics> {
+    private val defaultFont = object : DslFont<GuiGraphics> {
         val font get() = Minecraft.getInstance().font
         val fontSet get() = font.getFontSet(Minecraft.DEFAULT_FONT)
         override val lineHeight get() = font.lineHeight.px
