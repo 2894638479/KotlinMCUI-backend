@@ -59,12 +59,12 @@ repositories {
 
 loom {
     accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
-    // Opens a page by itself, screenshots it and quits. Set KOTLINMCUI_VERIFY to pick the
-    // page (the default opens the framework's test page).
+    // Opens a page by itself, screenshots it and quits. KOTLINMCUI_VERIFY picks the page by
+    // reference; the default opens the framework's test entry.
     runs {
         create("verifyClient") {
             client()
-            vmArg("-Dkotlinmcui.verify=" + (System.getenv("KOTLINMCUI_VERIFY") ?: "1"))
+            vmArg("-Dkotlinmcui.verify=" + (System.getenv("KOTLINMCUI_VERIFY") ?: "io.github.u2894638479.kotlinmcui.test.TestEntry\$Gui"))
         }
     }
 }
