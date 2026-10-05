@@ -59,18 +59,14 @@ repositories {
 
 loom {
     accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
-    // One name and one run configuration. KOTLINMCUI_PREVIEW=<page reference> opens that page and
-    // leaves it on screen to be looked at; also setting KOTLINMCUI_PREVIEW_CAPTURE=true photographs
-    // it and quits instead, with a non-zero exit code when the reference, the page or the file
-    // failed. (The values go through the environment because Gradle reads `-Pkotlinmcui.preview` as
-    // a task name on this version.)
-    runs {
-        create("previewClient") {
-            client()
-            vmArg("-Dkotlinmcui.preview=" + (System.getenv("KOTLINMCUI_PREVIEW") ?: ""))
-            vmArg("-Dkotlinmcui.preview.capture=" + (System.getenv("KOTLINMCUI_PREVIEW_CAPTURE") ?: "false"))
-        }
-    }
+    // There is deliberately no preview run configuration. The preview is driven by the JVM property
+    // -Dkotlinmcui.preview=<page reference> (-Dkotlinmcui.preview.capture=true adds the screenshot
+    // and the quit), and the plain runClient already carries it because the JVM reads
+    // JAVA_TOOL_OPTIONS itself and the game's JVM inherits it:
+    //
+    //   JAVA_TOOL_OPTIONS="-Dkotlinmcui.preview=<reference>" ./gradlew runClient
+    //
+    // No build-script support, and the same command works for anyone depending on the framework.
 }
 
 configurations.all {
