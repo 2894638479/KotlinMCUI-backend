@@ -80,7 +80,8 @@ dependencies {
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
-    modImplementation("com.terraformersmc:modmenu:$mod_menu_version")
+    modCompileOnly("com.terraformersmc:modmenu:$mod_menu_version")
+    modLocalRuntime("com.terraformersmc:modmenu:$mod_menu_version")
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {
@@ -137,6 +138,9 @@ tasks.processResources {
         "loader_version_range" to loader_version_range,
         "fabric_kotlin_version" to fabric_kotlin_version,
         "mod_menu_version" to mod_menu_version,
+        // The Mod Menu entrypoint is a nested class, so its JVM name contains '$'; Groovy's
+        // template expansion would read that as a placeholder. Build the value here instead.
+        "modmenu_entry" to "io.github.u2894638479.kotlinmcuibackend.Entry\$ModMenu",
     )
     inputs.properties(map)
     filesMatching("fabric.mod.json") { expand(map) }

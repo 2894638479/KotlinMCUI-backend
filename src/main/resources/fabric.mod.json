@@ -24,7 +24,7 @@
         ],
         "modmenu": [
             {
-                "value": "io.github.u2894638479.kotlinmcuibackend.Entry",
+                "value": "${modmenu_entry}",
                 "adapter": "kotlin"
             }
         ]
