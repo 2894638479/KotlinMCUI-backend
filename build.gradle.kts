@@ -1,41 +1,42 @@
-import org.gradle.kotlin.dsl.provideDelegate
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("fabric-loom")
     kotlin("jvm")
-    id("me.modmuss50.mod-publish-plugin") version "0.8.1"
+    id("me.modmuss50.mod-publish-plugin") version "2.2.1"
 }
 
-val maven_group: String by project
-val archives_base_name: String by project
-val license: String by project
-val mod_version: String by project
-val mod_id: String by project
-val mod_name: String by project
-val mod_description: String by project
-val mod_authors: String by project
-val mod_github: String by project
-val mod_issues: String by project
-val mod_mcmod: String by project
-val mod_modrinth: String by project
-val mod_curseforge: String by project
-val icon: String by project
+/** Reads a value from `gradle.properties`, failing the build when it is missing. */
+fun gradleProperty(name: String) = providers.gradleProperty(name).get()
 
-val kotlin_version: String by project
-val java_version: String by project
-val toolkit_version: String by project
-val kotlinmcui_version: String by project
-val kotlinmcui_version_range: String by project
-val minecraft_version: String by project
-val minecraft_version_range: String by project
-val loader: String by project
-val loader_suffix: String by project
-val loader_version: String by project
-val loader_version_range: String by project
-val fabric_kotlin_version: String by project
-val mod_menu_version: String by project
+val maven_group = gradleProperty("maven_group")
+val archives_base_name = gradleProperty("archives_base_name")
+val license = gradleProperty("license")
+val mod_version = gradleProperty("mod_version")
+val mod_id = gradleProperty("mod_id")
+val mod_name = gradleProperty("mod_name")
+val mod_description = gradleProperty("mod_description")
+val mod_authors = gradleProperty("mod_authors")
+val mod_github = gradleProperty("mod_github")
+val mod_issues = gradleProperty("mod_issues")
+val mod_mcmod = gradleProperty("mod_mcmod")
+val mod_modrinth = gradleProperty("mod_modrinth")
+val mod_curseforge = gradleProperty("mod_curseforge")
+val icon = gradleProperty("icon")
+
+val kotlin_version = gradleProperty("kotlin_version")
+val java_version = gradleProperty("java_version")
+val toolkit_version = gradleProperty("toolkit_version")
+val kotlinmcui_version = gradleProperty("kotlinmcui_version")
+val kotlinmcui_version_range = gradleProperty("kotlinmcui_version_range")
+val minecraft_version = gradleProperty("minecraft_version")
+val minecraft_version_range = gradleProperty("minecraft_version_range")
+val loader = gradleProperty("loader")
+val loader_suffix = gradleProperty("loader_suffix")
+val loader_version = gradleProperty("loader_version")
+val loader_version_range = gradleProperty("loader_version_range")
+val fabric_kotlin_version = gradleProperty("fabric_kotlin_version")
+val mod_menu_version = gradleProperty("mod_menu_version")
 
 base.archivesName = archives_base_name
 
@@ -53,7 +54,7 @@ val branch = listOf(loader,loader_suffix)
 repositories {
     mavenCentral()
     maven("https://maven.fabricmc.net/")
-    maven("https://maven.terraformersmc.com")
+    maven("https://maven.terraformersmc.com/releases/")
     maven("https://jitpack.io")
 }
 
@@ -105,7 +106,7 @@ java {
     targetCompatibility = JavaVersion.valueOf("VERSION_$java_version")
 }
 
-val sourcesJar: Jar by tasks
+val sourcesJar = tasks.named<Jar>("sourcesJar").get()
 sourcesJar.exclude("fabric.mod.json")
 sourcesJar.from("LICENSE")
 
@@ -159,7 +160,7 @@ tasks.configureEach {
 
 publishMods {
     file = tasks.remapJar.get().archiveFile
-    additionalFiles = files(sourcesJar.archiveFile,tasks.jar)
+    additionalFiles.from(sourcesJar.archiveFile, tasks.jar)
     changelog = "no changelog."
     type = when {
         mod_version.contains("SNAPSHOT",true) -> ALPHA
@@ -185,8 +186,8 @@ publishMods {
         projectId = "1460645"
         optional("modmenu")
         requires("fabric-language-kotlin","kotlinmcui")
-        clientRequired = true
-        serverRequired = false
+        client = true
+        server = false
         minecraftVersionRange {
             start = minecraft_version
             end = minecraft_version
