@@ -288,27 +288,27 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
         }
 
         context(renderParam: GuiGraphics)
-        private fun renderStrike(char: DslRenderableChar, dslGlyph: DslGlyph, x: Measure, y: Measure, color: Color) {
+        private fun renderStrike(char: DslRenderableChar, dslGlyph: DslGlyph, x: Measure, y: Measure, color: Color, scale: Double) {
             if(!char.style.isStrikeThrough) return
             fillRect(
                 Rect(
-                    left = x - 1.px,
-                    right = x + dslGlyph.advance(char.style),
-                    top = y + 3.5.px,
-                    bottom = y + 4.5.px
+                    left = x - 1.px * scale,
+                    right = x + dslGlyph.advance(char.style) * scale,
+                    top = y + 3.5.px * scale,
+                    bottom = y + 4.5.px * scale
                 ),color
             )
         }
 
         context(renderParam: GuiGraphics)
-        private fun renderUnderline(char: DslRenderableChar, dslGlyph: DslGlyph, x: Measure, y: Measure, color: Color) {
+        private fun renderUnderline(char: DslRenderableChar, dslGlyph: DslGlyph, x: Measure, y: Measure, color: Color, scale: Double) {
             if(!char.style.isUnderlined) return
             fillRect(
                 Rect(
-                    left = x - 1.px,
-                    right = x + dslGlyph.advance(char.style),
-                    top = y + 8.px,
-                    bottom = y + 9.px
+                    left = x - 1.px * scale,
+                    right = x + dslGlyph.advance(char.style) * scale,
+                    top = y + 8.px * scale,
+                    bottom = y + 9.px * scale
                 ),color
             )
         }
@@ -317,14 +317,14 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
         override fun renderChar(char: DslRenderableChar, x: Measure, y: Measure, effectLeft: Measure, effectRight: Measure) {
             val dslGlyph = glyph(char.code)
             val glyph = if(char.style.isObfuscated) fontSet.getRandomGlyph(dslGlyph.glyph) else fontSet.getGlyph(char.code)
-            val scale = (char.size / lineHeight).toFloat()
+            val scale = char.size / lineHeight
             val right = glyph.right
             val down = glyph.down
-            glyph.right = glyph.left + scale * (glyph.right - glyph.left)
-            glyph.down = glyph.up + scale * (glyph.down - glyph.up)
+            glyph.right = glyph.left + scale.toFloat() * (glyph.right - glyph.left)
+            glyph.down = glyph.up + scale.toFloat() * (glyph.down - glyph.up)
             if(char.style.isShadowed) {
-                val xShadow = x + dslGlyph.shadowOffset
-                val yShadow = y + dslGlyph.shadowOffset
+                val xShadow = x + dslGlyph.shadowOffset * scale
+                val yShadow = y + dslGlyph.shadowOffset * scale
                 val colorShadow = char.color.change(
                     r = char.color.rInt / 4,
                     g = char.color.gInt / 4,
@@ -332,14 +332,14 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
                 )
                 renderCharOnly(char,glyph,xShadow,yShadow,colorShadow,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
                 renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                renderUnderline(char,dslGlyph,xShadow,yShadow,colorShadow)
-                renderUnderline(char,dslGlyph,x,y,char.color)
-                renderStrike(char,dslGlyph,xShadow,yShadow,colorShadow)
-                renderStrike(char,dslGlyph,x,y,char.color)
+                renderUnderline(char,dslGlyph,xShadow,yShadow,colorShadow,scale)
+                renderUnderline(char,dslGlyph,x,y,char.color,scale)
+                renderStrike(char,dslGlyph,xShadow,yShadow,colorShadow,scale)
+                renderStrike(char,dslGlyph,x,y,char.color,scale)
             } else {
                 renderCharOnly(char,glyph,x,y,char.color,if(char.style.isBold) dslGlyph.boldOffset else 0.px)
-                renderUnderline(char,dslGlyph,x,y,char.color)
-                renderStrike(char,dslGlyph,x,y,char.color)
+                renderUnderline(char,dslGlyph,x,y,char.color,scale)
+                renderStrike(char,dslGlyph,x,y,char.color,scale)
             }
             glyph.right = right
             glyph.down = down
