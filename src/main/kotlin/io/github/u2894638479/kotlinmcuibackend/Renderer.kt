@@ -7,7 +7,6 @@ import com.mojang.blaze3d.vertex.Tesselator
 import com.mojang.blaze3d.vertex.VertexConsumer
 import com.mojang.blaze3d.vertex.VertexFormat
 import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
-import io.github.u2894638479.kotlinmcui.backend.DslBackendTriangles
 import io.github.u2894638479.kotlinmcui.backend.fillRect
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
@@ -35,7 +34,7 @@ import net.minecraft.world.item.enchantment.Enchantments
 import org.joml.Matrix4f
 import kotlin.math.roundToInt
 
-internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<GuiGraphics> {
+internal object Renderer: DslBackendRenderer<GuiGraphics> {
     override val guiScale get() = Minecraft.getInstance().window.guiScale
 
     context(renderParam: GuiGraphics)

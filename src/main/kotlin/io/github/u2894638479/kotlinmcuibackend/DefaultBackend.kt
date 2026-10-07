@@ -13,7 +13,6 @@ import net.minecraft.network.chat.Component
 
 internal object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     DslBackendRenderer<GuiGraphics> by Renderer,
-    DslBackendTriangles<GuiGraphics> by Renderer,
     DslBackendMetadata by Metadata,
     DslBackendUtils by Utils,
     DslBackendInput by Input
