@@ -189,9 +189,7 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
         if(!item.isPresent) blitTexture(ImageHolder("missing", 16.px, 16.px),rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
         else stack {
             RenderSystem.disableDepthTest()
-            // A copy: the registry's default instance is shared, and writing a count or a damage
-            // value into it would show up wherever else the game renders that item.
-            val itemStack = item.get().defaultInstance.copy().also {
+            val itemStack = item.get().defaultInstance.also {
                 it.count = count
                 if(damage != null) it.damageValue = (damage * it.maxDamage).roundToInt()
                 if(enchanted) it.enchant(Enchantments.SHARPNESS,1)
