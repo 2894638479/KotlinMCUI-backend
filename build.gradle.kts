@@ -83,6 +83,10 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
     modCompileOnly("com.terraformersmc:modmenu:$mod_menu_version")
     modLocalRuntime("com.terraformersmc:modmenu:$mod_menu_version")
+    // Fabric API is a required dependency (its resource loader is what puts the mod
+    // resources - the core jar's language files - into the game), so the development client
+    // has to have it too, or the loader refuses to start.
+    modLocalRuntime("net.fabricmc.fabric-api:fabric-api:0.92.12+1.20.1")
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {
