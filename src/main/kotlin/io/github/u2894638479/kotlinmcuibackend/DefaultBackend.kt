@@ -11,8 +11,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 
-@InternalBackend
-object DefaultBackend : DslBackend<GuiGraphics, Screen>,
+internal object DefaultBackend : DslBackend<GuiGraphics, Screen>,
     DslBackendRenderer<GuiGraphics> by Renderer,
     DslBackendTriangles<GuiGraphics> by Renderer,
     DslBackendMetadata by Metadata,

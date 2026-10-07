@@ -1,7 +1,6 @@
 package io.github.u2894638479.kotlinmcuibackend
 
 import io.github.u2894638479.kotlinmcui.backend.DslBackendInput
-import io.github.u2894638479.kotlinmcui.backend.InternalBackend
 import io.github.u2894638479.kotlinmcui.container.TopComponent
 import io.github.u2894638479.kotlinmcui.input.Key
 import io.github.u2894638479.kotlinmcui.input.KeyModifiers
@@ -70,7 +69,6 @@ private fun glfwModsToKeyModifiers(mods: Int) = KeyModifiers(
     numLock = (mods and GLFW_MOD_NUM_LOCK) != 0
 )
 
-@OptIn(InternalBackend::class)
 internal object Input : DslBackendInput {
     override var mouse = Position(0.px,0.px)
         private set
