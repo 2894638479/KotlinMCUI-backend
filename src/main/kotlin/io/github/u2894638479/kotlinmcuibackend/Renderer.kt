@@ -75,6 +75,30 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
         val r = rect.right.pixelsOrElse<Float> { return }
         val b = rect.bottom.pixelsOrElse<Float> { return }
         if(image == null || image.isEmpty || uv == null) {
+            val projected = perspective
+            if (projected != null) {
+                // The pose below has no perspective in it (withTransform keeps that out), so the
+                // corners only need the affine part after the divide, and the identity matrix then
+                // stops the platform from applying anything a second time.
+                val matrix = renderParam.pose().last().pose()
+                val xs = FloatArray(4)
+                val ys = FloatArray(4)
+                fun put(index: Int, x: Float, y: Float) {
+                    val (px,py) = projected.project(x,y)
+                    xs[index] = matrix.m00() * px + matrix.m10() * py + matrix.m30()
+                    ys[index] = matrix.m01() * px + matrix.m11() * py + matrix.m31()
+                }
+                put(0,l,t); put(1,r,t); put(2,l,b); put(3,r,b)
+                immediate(null) { vc, _ ->
+                    vc.vertex(identity,xs[0],ys[0],0f).color(lt).endVertex()
+                    vc.vertex(identity,xs[1],ys[1],0f).color(rt).endVertex()
+                    vc.vertex(identity,xs[2],ys[2],0f).color(lb).endVertex()
+                    vc.vertex(identity,xs[1],ys[1],0f).color(rt).endVertex()
+                    vc.vertex(identity,xs[3],ys[3],0f).color(rb).endVertex()
+                    vc.vertex(identity,xs[2],ys[2],0f).color(lb).endVertex()
+                }
+                return
+            }
             val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
             val matrix = renderParam.pose().last().pose()
             vc.vertex(matrix,l,t,0f).color(lt).endVertex()
@@ -217,8 +241,61 @@ internal object Renderer: DslBackendRenderer<GuiGraphics>, DslBackendTriangles<G
         }
     }
 
+    /**
+     * The perspective transform that is currently in effect, or null when there is none.
+     *
+     * The platform's GUI vertex path applies a pose matrix affinely: it computes
+     * `x' = m00*x + m10*y + m20*z + m30` and never divides by `w'`, so the third row of the matrix
+     * is dropped and a perspective would look exactly like its affine part. While a perspective is
+     * active this backend therefore keeps the transform here, projects the quad's corners itself
+     * and draws them with the identity matrix.
+     */
+    private var perspective: Perspective? = null
+
+    private val identity = Matrix4f()
+
+    /** The homogeneous part of a [Transform], enough to project a point and to nest transforms. */
+    private class Perspective(
+        private val m00: Float, private val m01: Float, private val m02: Float,
+        private val m10: Float, private val m11: Float, private val m12: Float,
+        private val m20: Float, private val m21: Float, private val m22: Float
+    ) {
+        val isAffine get() = m20 == 0f && m21 == 0f && m22 == 1f
+
+        /** [x],[y] after the divide by `w`, in the space this transform maps into. */
+        fun project(x: Float, y: Float): Pair<Float, Float> {
+            val w = m20 * x + m21 * y + m22
+            if (w == 0f) return x to y
+            return (m00 * x + m01 * y + m02) / w to (m10 * x + m11 * y + m12) / w
+        }
+
+        /** The matrix that applies [other] first and then this one. */
+        fun concat(other: Perspective) = Perspective(
+            m00 * other.m00 + m01 * other.m10 + m02 * other.m20,
+            m00 * other.m01 + m01 * other.m11 + m02 * other.m21,
+            m00 * other.m02 + m01 * other.m12 + m02 * other.m22,
+            m10 * other.m00 + m11 * other.m10 + m12 * other.m20,
+            m10 * other.m01 + m11 * other.m11 + m12 * other.m21,
+            m10 * other.m02 + m11 * other.m12 + m12 * other.m22,
+            m20 * other.m00 + m21 * other.m10 + m22 * other.m20,
+            m20 * other.m01 + m21 * other.m11 + m22 * other.m21,
+            m20 * other.m02 + m21 * other.m12 + m22 * other.m22
+        )
+    }
+
     context(renderParam: GuiGraphics)
     override fun withTransform(transform: Transform, block: () -> Unit) {
+        val next = transform.run { Perspective(m00,m01,m02,m10,m11,m12,m20,m21,m22) }
+        if (!next.isAffine) {
+            val previous = perspective
+            perspective = previous?.concat(next) ?: next
+            try {
+                block()
+            } finally {
+                perspective = previous
+            }
+            return
+        }
         renderParam.pose().pushPose()
         renderParam.pose().mulPoseMatrix(
             transform.run {
