@@ -9,5 +9,13 @@ internal object Metadata: DslBackendMetadata {
     override val gameDir get() = FabricLoader.getInstance().gameDir
     override val gameVersion get() = FabricLoader.getInstance().rawGameVersion
     override val gameLoader get() = "fabric"
-    override val environment get() = Environment.CLIENT
+
+    /**
+     * The real side, not a guess: the entry system filters its hooks by this, so a dedicated
+     * server must report [Environment.SERVER] or the server-only entries never run.
+     */
+    override val environment get() = when (FabricLoader.getInstance().environmentType) {
+        net.fabricmc.api.EnvType.CLIENT -> Environment.CLIENT
+        else -> Environment.SERVER
+    }
 }

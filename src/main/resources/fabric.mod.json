@@ -14,32 +14,20 @@
     },
     "license": "${license}",
     "icon": "${icon}",
-    "environment": "client",
+    "environment": "*",
     "entrypoints": {
-        "client": [
+        "main": [
             {
                 "value": "io.github.u2894638479.kotlinmcuibackend.Entry",
                 "adapter": "kotlin"
             }
-        ],
-        "modmenu": [
-            {
-                "value": "${modmenu_entry}",
-                "adapter": "kotlin"
-            }
         ]
     },
-    "mixins": ["kotlinmcuibackend.mixin.json"],
-    "accessWidener": "kotlinmcuibackend.accesswidener",
     "depends": {
         "fabricloader": "${loader_version_range}",
-        "minecraft": "${minecraft_version_range}",
-        "java": "*",
-        "fabric-api": "*",
+        "minecraft": "*",
+        "java": ">=8",
         "fabric-language-kotlin": ">=${fabric_kotlin_version}",
         "kotlinmcui": "${kotlinmcui_version_range}"
-    },
-    "suggests": {
-        "modmenu": "${mod_menu_version}"
     }
 }

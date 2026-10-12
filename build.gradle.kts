@@ -41,15 +41,10 @@ val mod_menu_version = gradleProperty("mod_menu_version")
 base.archivesName = archives_base_name
 
 group = maven_group
-version = listOf(mod_version,loader,loader_suffix,minecraft_version)
-    .filter { it.isNotBlank() }
-    .joinToString(separator = "+")
-    .replace("neoforge","neo")
+// A headless jar carries no game version in its name on purpose: it runs on every one of them.
+version = listOf(mod_version, "headless", loader).joinToString(separator = "+")
 
-val branch = listOf(loader,loader_suffix)
-    .filter { it.isNotBlank() }
-    .joinToString(separator = "+")
-    .plus("-$minecraft_version")
+val branch = "headless-${loader}"
 
 repositories {
     mavenCentral()
@@ -59,7 +54,7 @@ repositories {
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/kotlinmcuibackend.accesswidener")
+    // No access widener and no mixins: this backend never touches a Minecraft class.
     // There is deliberately no preview run configuration. The preview is driven by the JVM property
     // -Dkotlinmcui.preview=<page reference> (-Dkotlinmcui.preview.capture=true adds the screenshot
     // and the quit), and the plain runClient already carries it because the JVM reads
@@ -81,12 +76,6 @@ dependencies {
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
     modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
-    modCompileOnly("com.terraformersmc:modmenu:$mod_menu_version")
-    modLocalRuntime("com.terraformersmc:modmenu:$mod_menu_version")
-    // Fabric API is a required dependency (its resource loader is what puts the mod
-    // resources - the core jar's language files - into the game), so the development client
-    // has to have it too, or the loader refuses to start.
-    modLocalRuntime("net.fabricmc.fabric-api:fabric-api:0.92.12+1.20.1")
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {
@@ -143,9 +132,6 @@ tasks.processResources {
         "loader_version_range" to loader_version_range,
         "fabric_kotlin_version" to fabric_kotlin_version,
         "mod_menu_version" to mod_menu_version,
-        // The Mod Menu entrypoint is a nested class, so its JVM name contains '$'; Groovy's
-        // template expansion would read that as a placeholder. Build the value here instead.
-        "modmenu_entry" to "io.github.u2894638479.kotlinmcuibackend.Entry\$ModMenu",
     )
     inputs.properties(map)
     filesMatching("fabric.mod.json") { expand(map) }
@@ -178,7 +164,6 @@ publishMods {
     modrinth {
         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
         projectId = "FjVgWB2Y"
-        optional("modmenu")
         requires("fabric-language-kotlin","kotlinmcui")
         minecraftVersionRange {
             start = minecraft_version
@@ -188,10 +173,10 @@ publishMods {
     curseforge {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = "1460645"
-        optional("modmenu")
         requires("fabric-language-kotlin","kotlinmcui")
+        // Required on both sides: the core library declares this mod as a hard dependency.
         client = true
-        server = false
+        server = true
         minecraftVersionRange {
             start = minecraft_version
             end = minecraft_version

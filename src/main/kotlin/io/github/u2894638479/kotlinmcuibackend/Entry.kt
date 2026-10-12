@@ -1,26 +1,30 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import com.terraformersmc.modmenu.api.ConfigScreenFactory
-import com.terraformersmc.modmenu.api.ModMenuApi
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime
-import io.github.u2894638479.kotlinmcui.entry.DslEntryPage
-import net.fabricmc.api.ClientModInitializer
+import io.github.u2894638479.kotlinmcui.logger.dslLogger
+import net.fabricmc.api.ModInitializer
+import net.fabricmc.loader.api.FabricLoader
 
-internal class Entry : ClientModInitializer {
-    override fun onInitializeClient() {
-        // Metadata is readable this early; the backend itself is published once the platform
-        // can build screens (see MinecraftMixin), so nothing here may touch the client.
+/**
+ * The headless backend's only entrypoint.
+ *
+ * It is registered as `main`, so the loader runs it on a client and on a dedicated server
+ * alike. Metadata is readable this early, so it installs the runtime here and then publishes
+ * the headless backend - unless the window backend is installed, in which case that mod
+ * publishes instead (asking for its id needs nothing but the loader, which is the whole point
+ * of this backend being version independent).
+ */
+internal object Entry : ModInitializer {
+    override fun onInitialize() {
         DslRuntime.install { Metadata }
+        if (FabricLoader.getInstance().isModLoaded(WINDOW_MOD_ID)) {
+            dslLogger.info("$WINDOW_MOD_ID is installed, so this backend stays headless and silent")
+            return
+        }
+        DslRuntime.platformReady { HeadlessBackend }
+        dslLogger.info("headless backend published on ${Metadata.environment}")
     }
 
-    /**
-     * Mod Menu's config-screen hook. It is a class of its own so that Mod Menu stays optional: the
-     * loader resolves the `modmenu` entrypoint only when Mod Menu is installed, while [Entry]
-     * itself is loaded on every client start and must not mention a class that may be absent.
-     */
-    class ModMenu : ModMenuApi {
-        override fun getModConfigScreenFactory() = ConfigScreenFactory {
-            DefaultBackend.create("DSL Entry") { DslEntryPage() }.screen
-        }
-    }
+    /** The mod that renders into its own window and takes over from this one when present. */
+    internal const val WINDOW_MOD_ID = "kotlinmcuiwindow"
 }
