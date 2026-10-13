@@ -25,6 +25,9 @@ val mod_curseforge = gradleProperty("mod_curseforge")
 val icon = gradleProperty("icon")
 
 val kotlin_version = gradleProperty("kotlin_version")
+val coroutines_version = gradleProperty("coroutines_version")
+val serialization_version = gradleProperty("serialization_version")
+val slf4j_version = gradleProperty("slf4j_version")
 val java_version = gradleProperty("java_version")
 val toolkit_version = gradleProperty("toolkit_version")
 val kotlinmcui_version = gradleProperty("kotlinmcui_version")
@@ -71,11 +74,30 @@ configurations.all {
     }
 }
 
+/** Kotlin travels inside the jar: the old game versions have no language loader for it, and the ones
+ *  that exist bundle a Kotlin too old for classes compiled by 2.4. See tasks.jar. */
+val bundledKotlin by configurations.creating
+
 dependencies {
     minecraft("com.mojang:minecraft:$minecraft_version")
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
-    modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
+    // Compiled against normally, and unpacked into the jar by tasks.jar: the framework's runtime
+    // dependencies, which the old game versions have nobody else to provide.
+    listOf(
+        "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version",
+        "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version",
+        "org.jetbrains.kotlinx:kotlinx-serialization-core:$serialization_version",
+        "org.jetbrains.kotlinx:kotlinx-serialization-json:$serialization_version",
+        // The game only started shipping this one around 1.17; older versions have no slf4j at all.
+        "org.slf4j:slf4j-api:$slf4j_version",
+        // A binding as well, not just the API: without one slf4j turns into a no-op logger and the
+        // framework goes completely silent, which makes every failure here invisible.
+        "org.slf4j:slf4j-jdk14:$slf4j_version",
+    ).forEach {
+        implementation(it)
+        bundledKotlin(it)
+    }
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
     if(jarFile.exists() && sourceFile.exists()) {
@@ -90,6 +112,9 @@ kotlin {
     jvmToolchain(toolkit_version.toInt())
     compilerOptions {
         jvmTarget.set(JvmTarget.valueOf("JVM_$java_version"))
+        // The jar has to load on the Java 8 the old game versions run on, so the API surface is
+        // checked against 1.8 rather than the toolchain that compiles it.
+        freeCompilerArgs.add("-Xjdk-release=1.8")
     }
 }
 
@@ -105,6 +130,14 @@ sourcesJar.from("LICENSE")
 
 tasks.jar {
     from("LICENSE")
+    // Self-contained Kotlin: the standard library is unpacked into the mod jar instead of being
+    // required from a language-loader mod, because the versions this jar targets do not have one
+    // new enough. Every loader puts a mod's own jar on its classpath, so the classes are visible
+    // to this mod and to the framework it loads.
+    from(bundledKotlin.map { zipTree(it) }) {
+        exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.processResources {

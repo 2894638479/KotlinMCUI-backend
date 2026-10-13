@@ -14,7 +14,7 @@ import net.fabricmc.loader.api.FabricLoader
  * publishes instead (asking for its id needs nothing but the loader, which is the whole point
  * of this backend being version independent).
  */
-internal object Entry : ModInitializer {
+internal class Entry : ModInitializer {
     override fun onInitialize() {
         DslRuntime.install { Metadata }
         if (FabricLoader.getInstance().isModLoaded(WINDOW_MOD_ID)) {
@@ -24,7 +24,7 @@ internal object Entry : ModInitializer {
         DslRuntime.platformReady { HeadlessBackend }
         dslLogger.info("headless backend published on ${Metadata.environment}")
     }
-
-    /** The mod that renders into its own window and takes over from this one when present. */
-    internal const val WINDOW_MOD_ID = "kotlinmcuiwindow"
 }
+
+/** The mod that renders into its own window and takes over from this one when present. */
+internal const val WINDOW_MOD_ID = "kotlinmcuiwindow"
