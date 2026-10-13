@@ -10,8 +10,6 @@ import io.github.u2894638479.kotlinmcui.math.Position
 import io.github.u2894638479.kotlinmcui.math.px
 import io.github.u2894638479.kotlinmcui.math.rect.Rect
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.*
 import org.lwjgl.glfw.GLFW.*
@@ -69,6 +67,23 @@ private fun glfwModsToKeyModifiers(mods: Int) = KeyModifiers(
     numLock = (mods and GLFW_MOD_NUM_LOCK) != 0
 )
 
+/**
+ * Run the framework's handling of one platform event and report whether it consumed the event.
+ *
+ * The callbacks are already on the thread the framework builds its tree on, so there is nothing to
+ * defer and no coroutine is involved. What needs protecting is the hand-off to the platform's own
+ * callback below: without this, one failure in the framework takes the whole of that hand-off with
+ * it, and the event disappears. A failure is logged and reported as "not handled", so the platform
+ * still receives the event.
+ */
+private inline fun <T> guarded(what: String, fallback: T, block: () -> T): T =
+    try {
+        block()
+    } catch(e: Exception) {
+        dslLogger.error("kotlinmcui failed to handle $what", e)
+        fallback
+    }
+
 internal object Input : DslBackendInput {
     override var mouse = Position(0.px,0.px)
         private set
@@ -87,10 +102,6 @@ internal object Input : DslBackendInput {
     }
 
     private inline val top get() = TopComponent
-    // Taken from Utils rather than DefaultBackend: DefaultBackend's class initializer reads
-    // Input's delegating fields, so going through it here would make the two classes
-    // initialize each other and leave one of them half-built.
-    private val scope = CoroutineScope(Utils.mainDispatcher)
 
     // Called from MinecraftMixin (Java) once the window exists. Kotlin visibility does not reach
     // Java, so this member is the deliberate entry point of the input path.
@@ -102,73 +113,64 @@ internal object Input : DslBackendInput {
         cursorPosCallback = GLFW.glfwSetCursorPosCallback(window) { window,x,y ->
             val mouse = Position(x.px,y.px)
             this.mouse = mouse
-            context(mouse) { top.mouseMove() }
+            guarded("a cursor move", Unit) { context(mouse) { top.mouseMove() } }
             cursorPosCallback!!.invoke(window,x,y)
         }!!
 
         var mouseButtonCallback: GLFWMouseButtonCallbackI? = null
         mouseButtonCallback = GLFW.glfwSetMouseButtonCallback(window) { window,button,action,mods ->
-            scope.launch {
-                val result = context(mouse, glfwModsToKeyModifiers(mods)) {
+            val result = guarded("a mouse button", false) {
+                context(mouse, glfwModsToKeyModifiers(mods)) {
                     when(action) {
                         GLFW_PRESS -> top.mouseDown(MouseButton.from(button))
                         GLFW_RELEASE -> top.mouseUp(MouseButton.from(button))
                         else -> error("unknown mouse action $action")
                     }
                 }
-                if(!result) mouseButtonCallback!!(window,button,action,mods)
             }
+            if(!result) mouseButtonCallback!!(window,button,action,mods)
         }
 
         var scrollCallback: GLFWScrollCallbackI? = null
         scrollCallback = GLFW.glfwSetScrollCallback(window) { window,x,y ->
-            scope.launch {
+            val consumed = guarded("a scroll", false) {
                 context(mouse) {
                     val remainX = top.mouseScrollHorizontal(x)
                     val remainY = top.mouseScrollVertical(y)
-                    if(remainX != 0.0 || remainY != 0.0) {
-                        scrollCallback!!(window,x,y)
-                    }
+                    remainX == 0.0 && remainY == 0.0
                 }
             }
+            if(!consumed) scrollCallback!!(window,x,y)
         }
 
         var dropCallback: GLFWDropCallbackI? = null
         dropCallback = GLFW.glfwSetDropCallback(window) { window,n,ptr ->
-            scope.launch {
-                val paths = Array(n) { Path(GLFWDropCallback.getName(ptr,it)) }
-                context(mouse) {
-                    if(!top.dropFiles(paths)) {
-                        dropCallback!!(window,n,ptr)
-                    }
-                }
-            }
+            val paths = Array(n) { Path(GLFWDropCallback.getName(ptr,it)) }
+            val handled = guarded("a file drop", false) { context(mouse) { top.dropFiles(paths) } }
+            if(!handled) dropCallback!!(window,n,ptr)
         }
 
         var keyCallback: GLFWKeyCallbackI? = null
         keyCallback = GLFW.glfwSetKeyCallback(window) { window,glfwKey,scancode,action,mods ->
-            scope.launch {
-                val key = glfwKeyToKey(glfwKey)
-                val result = context(glfwModsToKeyModifiers(mods)) {
+            val key = glfwKeyToKey(glfwKey)
+            val result = guarded("a key", false) {
+                context(glfwModsToKeyModifiers(mods)) {
                     when(action) {
                         GLFW_PRESS,GLFW_REPEAT -> top.keyDown(key,scancode)
                         GLFW_RELEASE -> top.keyUp(key,scancode)
                         else -> error("unknown key action $action")
                     }
                 }
-                if(!result) keyCallback!!(window,glfwKey,scancode,action,mods)
             }
+            if(!result) keyCallback!!(window,glfwKey,scancode,action,mods)
         }
 
         var charModsCallback: GLFWCharModsCallbackI? = null
         charModsCallback = GLFW.glfwSetCharModsCallback(window) { window,codepoint,mods ->
-            scope.launch {
-                context(glfwModsToKeyModifiers(mods)) {
-                    if(!top.charTyped(Char(codepoint))) {
-                        charModsCallback!!(window,codepoint,mods)
-                    }
-                }
+            val handled = guarded("a typed character", false) {
+                context(glfwModsToKeyModifiers(mods)) { top.charTyped(Char(codepoint)) }
             }
+            if(!handled) charModsCallback!!(window,codepoint,mods)
         }
     }
 }
