@@ -74,29 +74,29 @@ configurations.all {
     }
 }
 
-/** Kotlin travels inside the jar: the old game versions have no language loader for it, and the ones
- *  that exist bundle a Kotlin too old for classes compiled by 2.4. See tasks.jar. */
-val bundledKotlin by configurations.creating
+/** Only slf4j travels inside the jar; the Kotlin runtime comes from the language loader. See
+ *  tasks.jar. */
+val bundledRuntime by configurations.creating
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraft_version")
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:$loader_version")
-    // Compiled against normally, and unpacked into the jar by tasks.jar: the framework's runtime
-    // dependencies, which the old game versions have nobody else to provide.
+    // The Kotlin language loader brings the framework's whole runtime with it - Kotlin itself, the
+    // coroutines, serialization and slf4j - so this jar stays a few KB instead of carrying copies.
+    // One FLK covers every game version this backend targets: its own metadata declares 1.14
+    // through the newest release, which is exactly the range the jar is built to run on.
+    modImplementation("net.fabricmc:fabric-language-kotlin:$fabric_kotlin_version")
+    // slf4j is the one runtime piece neither the loader nor the language loader brings, and the game
+    // only started shipping it around 1.17: on 1.14 and 1.16 the framework's logger cannot even
+    // initialise without it. The pair is about fifty kilobytes, and a bundled copy is harmless on
+    // Fabric - the whole 1.14 to 26.3 range was run with it before this.
     listOf(
-        "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version",
-        "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version",
-        "org.jetbrains.kotlinx:kotlinx-serialization-core:$serialization_version",
-        "org.jetbrains.kotlinx:kotlinx-serialization-json:$serialization_version",
-        // The game only started shipping this one around 1.17; older versions have no slf4j at all.
         "org.slf4j:slf4j-api:$slf4j_version",
-        // A binding as well, not just the API: without one slf4j turns into a no-op logger and the
-        // framework goes completely silent, which makes every failure here invisible.
         "org.slf4j:slf4j-jdk14:$slf4j_version",
     ).forEach {
         implementation(it)
-        bundledKotlin(it)
+        bundledRuntime(it)
     }
     val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
     val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
@@ -130,11 +130,10 @@ sourcesJar.from("LICENSE")
 
 tasks.jar {
     from("LICENSE")
-    // Self-contained Kotlin: the standard library is unpacked into the mod jar instead of being
-    // required from a language-loader mod, because the versions this jar targets do not have one
-    // new enough. Every loader puts a mod's own jar on its classpath, so the classes are visible
-    // to this mod and to the framework it loads.
-    from(bundledKotlin.map { zipTree(it) }) {
+    // Unpacked, not nested: the old game versions have no slf4j of their own, and every loader puts
+    // a mod's own jar on its classpath, so the classes are visible to this mod and to the framework
+    // it loads.
+    from(bundledRuntime.map { zipTree(it) }) {
         exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

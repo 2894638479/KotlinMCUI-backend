@@ -25,6 +25,7 @@
         "fabricloader": "*",
         "minecraft": "*",
         "java": ">=8",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}",
         "kotlinmcui": "${kotlinmcui_version_range}"
     }
 }
