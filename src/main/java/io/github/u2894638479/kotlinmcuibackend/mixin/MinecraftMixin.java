@@ -1,6 +1,7 @@
 package io.github.u2894638479.kotlinmcuibackend.mixin;
 
 import com.mojang.blaze3d.platform.Window;
+import io.github.u2894638479.kotlinmcuibackend.ClientActivation;
 import io.github.u2894638479.kotlinmcuibackend.DefaultBackend;
 import io.github.u2894638479.kotlinmcuibackend.Input;
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime;
@@ -21,6 +22,8 @@ public class MinecraftMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     void kotlinmcuibackend$registerEventCallbacks(GameConfig gameConfig, CallbackInfo ci) {
+        // The window backend owns the platform and the input callbacks when it is installed.
+        if (ClientActivation.yieldsToWindowBackend()) return;
         Input.INSTANCE.register(window.getWindow());
         // The window exists now, so screens can be built: publish the backend. The lambda is
         // lazy on purpose - forcing DefaultBackend here would initialize it too early.
