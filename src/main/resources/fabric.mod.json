@@ -16,7 +16,7 @@
     "icon": "${icon}",
     "environment": "client",
     "entrypoints": {
-        "client": [
+        "main": [
             {
                 "value": "io.github.u2894638479.kotlinmcuibackend.Entry",
                 "adapter": "kotlin"

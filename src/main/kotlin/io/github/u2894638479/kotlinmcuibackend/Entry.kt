@@ -5,11 +5,23 @@ import com.terraformersmc.modmenu.api.ModMenuApi
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime
 import io.github.u2894638479.kotlinmcui.entry.DslEntryPage
 import io.github.u2894638479.kotlinmcui.logger.dslLogger
-import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.api.ModInitializer
 import net.fabricmc.loader.api.FabricLoader
 
-internal class Entry : ClientModInitializer {
-    override fun onInitializeClient() {
+/**
+ * The bootstrap entrypoint, registered as `main` on purpose.
+ *
+ * The loader runs every `ModInitializer` before any `ClientModInitializer`, and [DslRuntime.install]
+ * has to happen before any other mod's [DslRuntime.platformReady] - which throws when it arrives
+ * first. The window backend publishes from a client entrypoint for exactly that reason, so
+ * installing from a client entrypoint of ours would put the two in a race that nothing orders.
+ *
+ * This is a separate failure from the one [ClientActivation] answers. An `install` that arrives
+ * late is a programming error and throws; a second backend that publishes is a user's installation
+ * mistake and is only refused and logged. Both need their own handling.
+ */
+internal class Entry : ModInitializer {
+    override fun onInitialize() {
         // Metadata is readable this early; the backend itself is published once the platform
         // can build screens (see MinecraftMixin), so nothing here may touch the client.
         DslRuntime.install { Metadata }
