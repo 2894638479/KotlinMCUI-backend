@@ -27,7 +27,6 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil
 import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.client.renderer.LightTexture
-import net.minecraft.client.renderer.RenderType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.enchantment.Enchantments
@@ -56,14 +55,16 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
     /**
      * Draw one quad.
      *
-     * The batched GUI buffer on this version only speaks quads, so an untextured draw becomes
-     * one quad and a textured draw whose corners share a colour takes the vanilla blit path.
-     * The remaining case — per-corner colours over a texture — goes through the immediate
-     * triangle path, which is also what [renderTriangles] uses.
+     * The contract fixes the split: this primitive is the two triangles `(lt, rt, lb)` and
+     * `(rt, rb, lb)`. The batched GUI buffer splits a quad on its first and third vertices
+     * instead, so handing it one quad would leave the diagonal to the vertex order — and the
+     * framework does pass four arbitrary corner colours: `Colors.ColorSquare` paints white, one
+     * hue and two blacks, which is affine along neither axis. Every path that can show the split
+     * therefore emits the pair above itself rather than submitting one quad.
      *
-     * Submitting one quad instead of two triangles lets the platform choose the diagonal; the
-     * framework only ever passes colours that are affine along the axes, so that choice cannot
-     * show. A caller that passes four arbitrary corner colours would see the difference.
+     * A textured draw whose corners share a colour takes the vanilla blit path, where the split
+     * cannot be observed. The remaining cases — untextured, and per-corner colours over a texture
+     * — go through the immediate triangle path, which is also what [renderTriangles] uses.
      */
     context(renderParam: GuiGraphics)
     override fun renderQuad(
@@ -98,12 +99,14 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
                 }
                 return
             }
-            val vc = renderParam.bufferSource.getBuffer(RenderType.gui())
-            val matrix = renderParam.pose().last().pose()
-            vc.vertex(matrix,l,t,0f).color(lt).endVertex()
-            vc.vertex(matrix,l,b,0f).color(lb).endVertex()
-            vc.vertex(matrix,r,b,0f).color(rb).endVertex()
-            vc.vertex(matrix,r,t,0f).color(rt).endVertex()
+            immediate(null) { vc, matrix ->
+                vc.vertex(matrix,l,t,0f).color(lt).endVertex()
+                vc.vertex(matrix,r,t,0f).color(rt).endVertex()
+                vc.vertex(matrix,l,b,0f).color(lb).endVertex()
+                vc.vertex(matrix,r,t,0f).color(rt).endVertex()
+                vc.vertex(matrix,r,b,0f).color(rb).endVertex()
+                vc.vertex(matrix,l,b,0f).color(lb).endVertex()
+            }
             return
         }
         if(lt == rt && rt == lb && lb == rb) {
