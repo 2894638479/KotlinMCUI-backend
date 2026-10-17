@@ -9,10 +9,10 @@ import net.fabricmc.loader.api.FabricLoader
  * The headless backend's only entrypoint.
  *
  * It is registered as `main`, so the loader runs it on a client and on a dedicated server
- * alike. Metadata is readable this early, so it installs the runtime here and then publishes
- * the headless backend - unless the window backend is installed, in which case that mod
- * publishes instead (asking for its id needs nothing but the loader, which is the whole point
- * of this backend being version independent).
+ * alike. Metadata is readable this early, so it installs the runtime here, registers the one
+ * provider and publishes the platform - unless the window backend is installed, in which case
+ * that mod publishes instead (asking for its id needs nothing but the loader, which is the whole
+ * point of this backend being version independent).
  */
 internal class Entry : ModInitializer {
     override fun onInitialize() {
@@ -21,7 +21,9 @@ internal class Entry : ModInitializer {
             dslLogger.info("$WINDOW_MOD_ID is installed, so this backend stays headless and silent")
             return
         }
-        DslRuntime.platformReady { HeadlessBackend }
+        // The provider has to be known before a platform can build a root against it.
+        DslRuntime.registerProvider(RootProvider)
+        DslRuntime.platformReady { Platform }
         dslLogger.info("headless backend published on ${Metadata.environment}")
     }
 }
