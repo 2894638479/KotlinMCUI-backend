@@ -87,9 +87,19 @@ dependencies {
     // resources - the core jar's language files - into the game), so the development client
     // has to have it too, or the loader refuses to start.
     modLocalRuntime("net.fabricmc.fabric-api:fabric-api:0.92.12+1.20.1")
-    val jarFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version.jar")
-    val sourceFile = file("../kotlinmcui/build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
-    if(jarFile.exists() && sourceFile.exists()) {
+    // A sibling core checkout means we are developing against it, so quietly taking the published
+    // version instead would build against a different core without saying so. Only a clean checkout
+    // that has no sibling (CI, a fresh clone) may take the published coordinate.
+    val sibling = rootProject.file("../kotlinmcui")
+    if(sibling.isDirectory) {
+        val jarFile = sibling.resolve("build/libs/kotlinmcui-$kotlinmcui_version.jar")
+        val sourceFile = sibling.resolve("build/libs/kotlinmcui-$kotlinmcui_version-sources.jar")
+        check(jarFile.exists()) {
+            "the sibling core checkout has no jar: run `./gradlew jar` in ../kotlinmcui (looked for ${jarFile.path})"
+        }
+        check(sourceFile.exists()) {
+            "the sibling core checkout has no sources jar: run `./gradlew sourcesJar` in ../kotlinmcui (looked for ${sourceFile.path})"
+        }
         implementation(files(jarFile.path))
         compileOnly(files(sourceFile.path))
     } else {
