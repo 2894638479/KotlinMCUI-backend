@@ -4,6 +4,7 @@ import io.github.u2894638479.kotlinmcui.backend.*
 import io.github.u2894638479.kotlinmcui.container.DslChild
 import io.github.u2894638479.kotlinmcui.container.DslDataStore
 import io.github.u2894638479.kotlinmcui.container.DslRoot
+import io.github.u2894638479.kotlinmcui.container.ViewerLifetime
 import io.github.u2894638479.kotlinmcui.dsl.DslFunction
 import io.github.u2894638479.kotlinmcui.math.px
 import net.minecraft.client.Minecraft
@@ -20,6 +21,48 @@ internal object RootProvider : DslRootProvider<GuiGraphics, Screen> {
     override val input: DslBackendInput get() = Input
     override val screenFactory: DslRootScreenFactory<Screen>? get() = ScreenFactory
     override val rootUtils: DslRootUtils get() = Utils
+
+    /**
+     * The root this backend drives.
+     *
+     * The process owner root belongs to whichever backend registered first, so a backend that
+     * registers later must not drive it - it would render another backend's tree. Which root is
+     * this one's is decided by the runtime from the registration order: deciding it here would
+     * mean reimplementing the same ordering test in every backend, and getting it wrong is silent.
+     */
+    @Volatile
+    private var acquiredRoot: DslRoot? = null
+
+    /**
+     * Resolve this backend's root: the process root when this provider registered first, one of
+     * its own otherwise.
+     *
+     * Call it after [DslRuntime.registerProvider] - the runtime asks whether this provider is the
+     * first registered one - and after the platform is published.
+     */
+    @JvmStatic
+    fun acquireRoot() {
+        acquiredRoot = DslRuntime.rootFor(this, ViewerLifetime.PROCESS)
+    }
+
+    /**
+     * Resolve a root of this backend's own, for when another backend holds the process root.
+     *
+     * Never asks for the process root: on the yielding path that root is not this backend's to
+     * drive, and it may not even be buildable yet.
+     */
+    @JvmStatic
+    fun acquireOwnRoot() {
+        acquiredRoot = DslRuntime.createRoot(this, ViewerLifetime.PROCESS)
+    }
+
+    /** This backend's root; fails loudly when [acquireRoot] has not run. */
+    @JvmStatic
+    fun root(): DslRoot = acquiredRoot ?: error("RootProvider.acquireRoot has not run")
+
+    /** Null until [acquireRoot] ran, for the frame hook that may run first. */
+    @JvmStatic
+    fun rootOrNull(): DslRoot? = acquiredRoot
 
     override fun frame(root: DslRoot, renderParam: GuiGraphics) {
         // The HUD draws through the game's own GUI rendering, and while the loading overlay is
@@ -61,8 +104,8 @@ private class WrappedScreen(title: String, dslFunction: DslFunction) : Screen(Co
     )
     val dslScreen = dataStore.dslScreen
     var child: DslChild? = null
-    override fun added() { child = DslRuntime.ownerRoot.children.collect(dslScreen) }
-    override fun removed() { DslRuntime.ownerRoot.children.remove(child!!) }
+    override fun added() { child = RootProvider.root().children.collect(dslScreen) }
+    override fun removed() { RootProvider.root().children.remove(child!!) }
     override fun onClose() { dslScreen.close() }
     override fun isPauseScreen() = dataStore.pauseGame
     // The framework paints its own background (the defaultBackground decorator), so the

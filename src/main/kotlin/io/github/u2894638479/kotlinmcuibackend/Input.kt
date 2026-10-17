@@ -101,7 +101,7 @@ internal object Input : DslBackendInput {
         // the platform itself. A backend on a newer GLFW positions it here instead.
     }
 
-    private inline val top get() = DslRuntime.ownerRoot.component
+    private inline val top get() = RootProvider.root().component
 
     // Called from MinecraftMixin (Java) once the window exists. Kotlin visibility does not reach
     // Java, so this member is the deliberate entry point of the input path.

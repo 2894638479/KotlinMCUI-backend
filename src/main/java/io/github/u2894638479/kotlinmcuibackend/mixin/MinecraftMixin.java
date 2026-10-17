@@ -24,17 +24,20 @@ public class MinecraftMixin {
     @Inject(method = "<init>", at = @At("RETURN"))
     void kotlinmcuibackend$registerEventCallbacks(GameConfig gameConfig, CallbackInfo ci) {
         // Registering the provider is a capability, not a policy: the main root is built from the
-        // first registered provider, so this happens whatever publishes the platform. A window
-        // backend owning the platform does not stop this backend's roots from being built.
+        // first registered provider, so this happens whatever publishes the platform.
         DslRuntime.INSTANCE.registerProvider(RootProvider.INSTANCE);
-        // Driving the game's own HUD is a policy, and it stays with whoever owns the platform:
-        // with the window backend installed this one registers and then touches nothing - not the
-        // input callbacks either, which would consult the shared component stack and swallow
-        // Minecraft's own keys.
-        if (ClientActivation.yieldsToWindowBackend()) return;
+        // Driving the game's own HUD is a policy, and it stays with whoever owns the platform.
+        if (ClientActivation.yieldsToWindowBackend()) {
+            // Another backend owns the platform, so this one publishes nothing - but it still gets
+            // a root of its own, so a caller driving a frame explicitly can work.
+            RootProvider.INSTANCE.acquireOwnRoot();
+            return;
+        }
         Input.INSTANCE.register(window.getWindow());
         // The window exists now, so screens can be built: publish the platform. The lambda is
         // lazy on purpose - forcing Platform here would initialize it too early.
         DslRuntime.INSTANCE.platformReady(() -> Platform.INSTANCE);
+        // The platform exists now, so this backend's root can be resolved.
+        RootProvider.INSTANCE.acquireRoot();
     }
 }
