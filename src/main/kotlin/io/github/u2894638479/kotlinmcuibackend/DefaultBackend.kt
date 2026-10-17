@@ -3,7 +3,6 @@ package io.github.u2894638479.kotlinmcuibackend
 import io.github.u2894638479.kotlinmcui.backend.*
 import io.github.u2894638479.kotlinmcui.container.DslChild
 import io.github.u2894638479.kotlinmcui.container.DslDataStore
-import io.github.u2894638479.kotlinmcui.container.TopComponent
 import io.github.u2894638479.kotlinmcui.dsl.DslFunction
 import io.github.u2894638479.kotlinmcui.math.px
 import net.minecraft.client.Minecraft
@@ -24,14 +23,17 @@ internal object DefaultBackend : DslBackend<GuiGraphics, Screen>,
         // up that state is not ready yet: drawing now submits against a pose the game has not
         // set up, and (on backends that compile pipelines eagerly) can poison their cache.
         if (mc.overlay != null) return
+        val root = DslRuntime.ownerRoot
         context(guiGraphics, Input.mouse) {
-            TopComponent.rect.apply {
+            // The root owns its viewport: writing the rect comes first, and the render pass copies
+            // it onto every mounted screen, so the order between the two is the contract.
+            root.rect.apply {
                 left = 0.px
                 top = 0.px
                 right = mc.window.screenWidth.px
                 bottom = mc.window.screenHeight.px
             }
-            TopComponent.render()
+            root.component.render()
         }
     }
 
@@ -43,8 +45,8 @@ internal object DefaultBackend : DslBackend<GuiGraphics, Screen>,
         )
         val dslScreen = dataStore.dslScreen
         var child: DslChild? = null
-        override fun added() { child = TopComponent.children.collect(dslScreen) }
-        override fun removed() { TopComponent.children.remove(child!!) }
+        override fun added() { child = DslRuntime.ownerRoot.children.collect(dslScreen) }
+        override fun removed() { DslRuntime.ownerRoot.children.remove(child!!) }
         override fun onClose() { dslScreen.close() }
         override fun isPauseScreen() = dataStore.pauseGame
         // The framework paints its own background (the defaultBackground decorator), so the

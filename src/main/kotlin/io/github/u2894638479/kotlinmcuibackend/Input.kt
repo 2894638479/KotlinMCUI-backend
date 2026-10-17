@@ -1,7 +1,7 @@
 package io.github.u2894638479.kotlinmcuibackend
 
 import io.github.u2894638479.kotlinmcui.backend.DslBackendInput
-import io.github.u2894638479.kotlinmcui.container.TopComponent
+import io.github.u2894638479.kotlinmcui.backend.DslRuntime
 import io.github.u2894638479.kotlinmcui.input.Key
 import io.github.u2894638479.kotlinmcui.input.KeyModifiers
 import io.github.u2894638479.kotlinmcui.input.MouseButton
@@ -101,7 +101,7 @@ internal object Input : DslBackendInput {
         // the platform itself. A backend on a newer GLFW positions it here instead.
     }
 
-    private inline val top get() = TopComponent
+    private inline val top get() = DslRuntime.ownerRoot.component
 
     // Called from MinecraftMixin (Java) once the window exists. Kotlin visibility does not reach
     // Java, so this member is the deliberate entry point of the input path.
