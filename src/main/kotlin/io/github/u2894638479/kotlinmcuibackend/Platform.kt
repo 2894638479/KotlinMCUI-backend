@@ -7,7 +7,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * The process-level half of this backend: the facts and helpers that belong to the platform rather
- * than to one output. The per-output half is [RootProvider].
+ * than to one output. The per-output half is [Root].
  */
 internal object Platform : DslPlatform {
     override val metadata: DslBackendMetadata get() = Metadata

@@ -4,7 +4,8 @@ import com.mojang.blaze3d.platform.Window;
 import io.github.u2894638479.kotlinmcuibackend.ClientActivation;
 import io.github.u2894638479.kotlinmcuibackend.Input;
 import io.github.u2894638479.kotlinmcuibackend.Platform;
-import io.github.u2894638479.kotlinmcuibackend.RootProvider;
+import io.github.u2894638479.kotlinmcuibackend.Root;
+import io.github.u2894638479.kotlinmcui.backend.DslPreview;
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
@@ -23,21 +24,21 @@ public class MinecraftMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     void kotlinmcuibackend$registerEventCallbacks(GameConfig gameConfig, CallbackInfo ci) {
-        // Registering the provider is a capability, not a policy: the main root is built from the
-        // first registered provider, so this happens whatever publishes the platform.
-        DslRuntime.INSTANCE.registerProvider(RootProvider.INSTANCE);
-        // Driving the game's own HUD is a policy, and it stays with whoever owns the platform.
-        if (ClientActivation.yieldsToWindowBackend()) {
-            // Another backend owns the platform, so this one publishes nothing - but it still gets
-            // a root of its own, so a caller driving a frame explicitly can work.
-            RootProvider.INSTANCE.acquireOwnRoot();
-            return;
-        }
+        // The window exists now, so screens can be built: publish the platform. The lambda is lazy
+        // on purpose - forcing Platform here would initialize it too early.
+        boolean published = DslRuntime.INSTANCE.start(() -> Platform.INSTANCE);
+        // The root belongs to the backend that built it, so it is built whatever published the
+        // platform: another backend owning the platform no longer makes this one unable to work.
+        Root.INSTANCE.create();
+        // The preview is a tool rather than a process fact: it draws into the root it is handed and
+        // reads no global, so it is started here, where this backend's own root exists. It does
+        // nothing unless the launch properties asked for a page.
+        DslPreview.INSTANCE.start(Root.INSTANCE.get());
+        // Driving the game's own HUD is a policy, and it needs this backend to have published the
+        // platform. This build also stands down when the window backend is installed, which is a
+        // property of the installation rather than of the ordering.
+        Root.setDriving(published && !ClientActivation.yieldsToWindowBackend());
+        if (!Root.isDriving()) return;
         Input.INSTANCE.register(window.getWindow());
-        // The window exists now, so screens can be built: publish the platform. The lambda is
-        // lazy on purpose - forcing Platform here would initialize it too early.
-        DslRuntime.INSTANCE.platformReady(() -> Platform.INSTANCE);
-        // The platform exists now, so this backend's root can be resolved.
-        RootProvider.INSTANCE.acquireRoot();
     }
 }
