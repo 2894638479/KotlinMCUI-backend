@@ -37,7 +37,7 @@ internal class Entry : ModInitializer {
      */
     class ModMenu : ModMenuApi {
         override fun getModConfigScreenFactory() = ConfigScreenFactory {
-            DefaultBackend.create("DSL Entry") { DslEntryPage() }.screen
+            ScreenFactory.create("DSL Entry") { DslEntryPage() }.screen
         }
     }
 }

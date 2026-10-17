@@ -1,6 +1,8 @@
 package io.github.u2894638479.kotlinmcuibackend.mixin;
 
-import io.github.u2894638479.kotlinmcuibackend.DefaultBackend;
+import io.github.u2894638479.kotlinmcuibackend.RootProvider;
+import io.github.u2894638479.kotlinmcui.backend.DslRuntime;
+import io.github.u2894638479.kotlinmcui.container.DslRoot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
@@ -15,7 +17,8 @@ public class GameRendererMixin {
         instance.pose().pushPose();
         float f = 1 / (float)Minecraft.getInstance().getWindow().getGuiScale();
         instance.pose().scale(f,f,1f);
-        DefaultBackend.INSTANCE.render(instance);
+        DslRoot root = DslRuntime.INSTANCE.getOwnerRoot();
+        RootProvider.INSTANCE.frame(root, instance);
         instance.pose().popPose();
         instance.flush();
     }

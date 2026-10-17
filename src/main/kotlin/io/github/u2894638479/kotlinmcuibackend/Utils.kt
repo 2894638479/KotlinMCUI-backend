@@ -1,7 +1,8 @@
 package io.github.u2894638479.kotlinmcuibackend
 
 import com.mojang.blaze3d.platform.NativeImage
-import io.github.u2894638479.kotlinmcui.backend.DslBackendUtils
+import io.github.u2894638479.kotlinmcui.backend.DslPlatformUtils
+import io.github.u2894638479.kotlinmcui.backend.DslRootUtils
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.logger.dslLogger
 import io.github.u2894638479.kotlinmcui.math.Color
@@ -21,7 +22,7 @@ import javax.imageio.ImageIO
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal object Utils: DslBackendUtils {
+internal object Utils: DslPlatformUtils, DslRootUtils {
     override fun translate(key: String,vararg args: Any?): String? {
         if(!Language.getInstance().has(key)) return null
         return Language.getInstance().getOrDefault(key,key).let {
@@ -31,7 +32,7 @@ internal object Utils: DslBackendUtils {
         }
     }
 
-    override val mainDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
+    override val sessionDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
 
     override suspend fun capture(fileName: String): File? = suspendCancellableCoroutine { continuation ->
         val minecraft = Minecraft.getInstance()

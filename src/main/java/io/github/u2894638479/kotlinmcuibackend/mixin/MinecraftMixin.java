@@ -2,8 +2,9 @@ package io.github.u2894638479.kotlinmcuibackend.mixin;
 
 import com.mojang.blaze3d.platform.Window;
 import io.github.u2894638479.kotlinmcuibackend.ClientActivation;
-import io.github.u2894638479.kotlinmcuibackend.DefaultBackend;
 import io.github.u2894638479.kotlinmcuibackend.Input;
+import io.github.u2894638479.kotlinmcuibackend.Platform;
+import io.github.u2894638479.kotlinmcuibackend.RootProvider;
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
@@ -25,8 +26,11 @@ public class MinecraftMixin {
         // The window backend owns the platform and the input callbacks when it is installed.
         if (ClientActivation.yieldsToWindowBackend()) return;
         Input.INSTANCE.register(window.getWindow());
-        // The window exists now, so screens can be built: publish the backend. The lambda is
-        // lazy on purpose - forcing DefaultBackend here would initialize it too early.
-        DslRuntime.INSTANCE.platformReady(() -> DefaultBackend.INSTANCE);
+        // The main root is built from the first registered provider, so registering comes first:
+        // publishing the platform can already build a root, because a preview asks for a page.
+        DslRuntime.INSTANCE.registerProvider(RootProvider.INSTANCE);
+        // The window exists now, so screens can be built: publish the platform. The lambda is
+        // lazy on purpose - forcing Platform here would initialize it too early.
+        DslRuntime.INSTANCE.platformReady(() -> Platform.INSTANCE);
     }
 }
