@@ -30,15 +30,16 @@ public class MinecraftMixin {
         // The root belongs to the backend that built it, so it is built whatever published the
         // platform: another backend owning the platform no longer makes this one unable to work.
         Root.INSTANCE.create();
-        // The preview is a tool rather than a process fact: it draws into the root it is handed and
-        // reads no global, so it is started here, where this backend's own root exists. It does
-        // nothing unless the launch properties asked for a page.
-        DslPreview.INSTANCE.start(Root.INSTANCE.get());
         // Driving the game's own HUD is a policy, and it needs this backend to have published the
         // platform. This build also stands down when the window backend is installed, which is a
         // property of the installation rather than of the ordering.
         Root.setDriving(published && !ClientActivation.yieldsToWindowBackend());
         if (!Root.isDriving()) return;
+        // The preview is a tool rather than a process fact: it draws into the root it is handed and
+        // reads no global. It starts only on the branch that drives - a preview on a root nobody
+        // renders would wait for a frame that never comes - and does nothing unless the launch
+        // properties asked for a page.
+        DslPreview.INSTANCE.start(Root.INSTANCE.get());
         Input.INSTANCE.register(window.getWindow());
     }
 }
