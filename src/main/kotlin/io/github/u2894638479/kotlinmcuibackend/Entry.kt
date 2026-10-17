@@ -8,26 +8,24 @@ import net.fabricmc.loader.api.FabricLoader
 /**
  * The headless backend's only entrypoint.
  *
- * It is registered as `main`, so the loader runs it on a client and on a dedicated server
- * alike. Metadata is readable this early, so it installs the runtime here, registers the one
- * provider and publishes the platform - unless the window backend is installed, in which case
- * that mod publishes instead (asking for its id needs nothing but the loader, which is the whole
- * point of this backend being version independent).
+ * It is registered as `main`, so the loader runs it on a client and on a dedicated server alike.
+ * Metadata is readable this early, so it installs the runtime here, publishes the platform and
+ * builds this backend's root - unless the window backend is installed, in which case that mod
+ * publishes instead (asking for its id needs nothing but the loader, which is the whole point of
+ * this backend being version independent).
+ *
+ * The root is built either way: it belongs to the backend that built it, so not publishing does
+ * not take the tree away.
  */
 internal class Entry : ModInitializer {
     override fun onInitialize() {
         DslRuntime.install { Metadata }
-        // Registering the provider is a capability, not a policy: the main root is built from the
-        // first registered provider, so this happens whatever publishes the platform.
-        DslRuntime.registerProvider(RootProvider)
-        // Publishing is the policy half, and it stays with whoever owns the platform: with the
-        // window backend installed this one registers and then touches nothing.
         if (FabricLoader.getInstance().isModLoaded(WINDOW_MOD_ID)) {
-            dslLogger.info("$WINDOW_MOD_ID is installed, so this backend stays headless and silent")
-            return
+            dslLogger.info("$WINDOW_MOD_ID is installed, so this backend yields the platform to it")
+        } else if (DslRuntime.start { Platform }) {
+            dslLogger.info("headless backend published on ${Metadata.environment}")
         }
-        DslRuntime.platformReady { Platform }
-        dslLogger.info("headless backend published on ${Metadata.environment}")
+        Root.create()
     }
 }
 

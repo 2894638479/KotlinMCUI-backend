@@ -7,7 +7,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * The process-level half of this backend: the facts and helpers that belong to the platform rather
- * than to one output. The per-output half is [RootProvider].
+ * than to one output. The per-output half is [Root].
  *
  * Deliberately free of any Minecraft type: that is what lets one jar cover every game version.
  */
