@@ -17,12 +17,15 @@ import net.fabricmc.loader.api.FabricLoader
 internal class Entry : ModInitializer {
     override fun onInitialize() {
         DslRuntime.install { Metadata }
+        // Registering the provider is a capability, not a policy: the main root is built from the
+        // first registered provider, so this happens whatever publishes the platform.
+        DslRuntime.registerProvider(RootProvider)
+        // Publishing is the policy half, and it stays with whoever owns the platform: with the
+        // window backend installed this one registers and then touches nothing.
         if (FabricLoader.getInstance().isModLoaded(WINDOW_MOD_ID)) {
             dslLogger.info("$WINDOW_MOD_ID is installed, so this backend stays headless and silent")
             return
         }
-        // The provider has to be known before a platform can build a root against it.
-        DslRuntime.registerProvider(RootProvider)
         DslRuntime.platformReady { Platform }
         dslLogger.info("headless backend published on ${Metadata.environment}")
     }
