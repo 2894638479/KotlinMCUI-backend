@@ -1,10 +1,10 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import io.github.u2894638479.kotlinmcui.backend.DslBackendMetadata
+import io.github.u2894638479.kotlinmcui.backend.DslPlatformMetadata
 import io.github.u2894638479.kotlinmcui.backend.Environment
 import net.fabricmc.loader.api.FabricLoader
 
-internal object Metadata: DslBackendMetadata {
+internal object Metadata: DslPlatformMetadata {
     override val configDir get() = FabricLoader.getInstance().configDir
     override val gameDir get() = FabricLoader.getInstance().gameDir
     override val gameVersion get() = FabricLoader.getInstance().rawGameVersion

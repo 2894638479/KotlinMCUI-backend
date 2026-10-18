@@ -27,6 +27,9 @@ public class MinecraftMixin {
         // The window exists now, so screens can be built: publish the platform. The lambda is lazy
         // on purpose - forcing Platform here would initialize it too early.
         boolean published = DslRuntime.INSTANCE.start(() -> Platform.INSTANCE);
+        // The launch hooks belong to whoever published the platform, and `start` deliberately does
+        // not run them: a test or a standalone tool publishes a platform without a game to launch.
+        if (published) DslRuntime.INSTANCE.launch();
         // The root belongs to the backend that built it, so it is built whatever published the
         // platform: another backend owning the platform no longer makes this one unable to work.
         Root.INSTANCE.create();

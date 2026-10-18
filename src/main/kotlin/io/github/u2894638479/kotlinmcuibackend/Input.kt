@@ -1,6 +1,6 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import io.github.u2894638479.kotlinmcui.backend.DslBackendInput
+import io.github.u2894638479.kotlinmcui.backend.DslRootInput
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime
 import io.github.u2894638479.kotlinmcui.input.Key
 import io.github.u2894638479.kotlinmcui.input.KeyModifiers
@@ -84,7 +84,7 @@ private inline fun <T> guarded(what: String, fallback: T, block: () -> T): T =
         fallback
     }
 
-internal object Input : DslBackendInput {
+internal object Input : DslRootInput {
     override var mouse = Position(0.px,0.px)
         private set
 

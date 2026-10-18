@@ -34,6 +34,9 @@ internal object Utils: DslPlatformUtils, DslRootUtils {
 
     override val sessionDispatcher = Minecraft.getInstance().asCoroutineDispatcher()
 
+    /** Drawing happens on the game's render thread, and that thread is this root's session thread. */
+    override val isOnSessionThread get() = Minecraft.getInstance().isSameThread()
+
     override suspend fun capture(fileName: String): File? = suspendCancellableCoroutine { continuation ->
         val minecraft = Minecraft.getInstance()
         val file = File(File(minecraft.gameDirectory,"screenshots"),fileName)

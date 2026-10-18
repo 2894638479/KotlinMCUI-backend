@@ -6,7 +6,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.vertex.Tesselator
 import com.mojang.blaze3d.vertex.VertexConsumer
 import com.mojang.blaze3d.vertex.VertexFormat
-import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
+import io.github.u2894638479.kotlinmcui.backend.DslRootRenderer
 import io.github.u2894638479.kotlinmcui.backend.fillRect
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
@@ -33,7 +33,7 @@ import net.minecraft.world.item.enchantment.Enchantments
 import org.joml.Matrix4f
 import kotlin.math.roundToInt
 
-internal object Renderer: DslBackendRenderer<GuiGraphics> {
+internal object Renderer: DslRootRenderer<GuiGraphics> {
     override val guiScale get() = Minecraft.getInstance().window.guiScale
 
     context(renderParam: GuiGraphics)
@@ -74,7 +74,7 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
         val t = rect.top.pixelsOrElse<Float> { return }
         val r = rect.right.pixelsOrElse<Float> { return }
         val b = rect.bottom.pixelsOrElse<Float> { return }
-        if(image == null || image.isEmpty || uv == null) {
+        if(image == null || image.id.isEmpty() || uv == null) {
             val projected = perspective
             if (projected != null) {
                 // The pose below has no perspective in it (withTransform keeps that out), so the
@@ -129,7 +129,7 @@ internal object Renderer: DslBackendRenderer<GuiGraphics> {
 
     context(renderParam: GuiGraphics)
     override fun renderTriangles(vertices: FloatArray, colors: IntArray, image: ImageHolder?) {
-        val img = image?.takeIf { !it.isEmpty }
+        val img = image?.takeIf { it.id.isNotEmpty() }
         val stride = if(img == null) 2 else 4
         // A malformed list is a caller bug; drawing nothing beats drawing garbage.
         if(colors.size * stride != vertices.size || colors.size % 3 != 0) return

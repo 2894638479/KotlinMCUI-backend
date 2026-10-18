@@ -75,8 +75,8 @@ internal object Root {
 
 /** Creates the screens this root holds. */
 internal object ScreenFactory : DslRootScreenFactory<Screen> {
-    override fun create(title: String, dslFunction: DslFunction): DslBackendScreenHolder<Screen> =
-        object : DslBackendScreenHolder<Screen> {
+    override fun create(title: String, dslFunction: DslFunction): DslScreenHolder<Screen> =
+        object : DslScreenHolder<Screen> {
             override fun show() { mc.execute { mc.setScreen(screen) } }
             override val screen = WrappedScreen(title, dslFunction)
             override val dslScreen get() = screen.dslScreen
