@@ -100,6 +100,17 @@ dependencies {
         check(sourceFile.exists()) {
             "the sibling core checkout has no sources jar: run `./gradlew sourcesJar` in ../kotlinmcui (looked for ${sourceFile.path})"
         }
+        // Being present is not the same as being the same build: the core compiles `jar` and
+        // `sourcesJar` independently, so a rename can reach the main jar while the sources jar still
+        // describes the old API - the classes then fail to resolve against names the sources no
+        // longer mention. A real mismatch is hours apart; a normal rebuild is milliseconds apart,
+        // and Gradle does not order the two tasks, which is what the slack is for: without it this
+        // check would fire on a perfectly good build.
+        val sourcesOlderBy = jarFile.lastModified() - sourceFile.lastModified()
+        check(sourcesOlderBy <= 5_000L) {
+            "the sibling core's sources jar is older than its main jar by ${sourcesOlderBy / 1000}s: " +
+                "run `./gradlew sourcesJar` in ../kotlinmcui (${sourceFile.name} predates ${jarFile.name})"
+        }
         implementation(files(jarFile.path))
         compileOnly(files(sourceFile.path))
     } else {
