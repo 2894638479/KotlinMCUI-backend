@@ -19,8 +19,14 @@ import java.util.concurrent.Executors
 internal object HeadlessUtils : DslPlatformUtils, DslRootUtils {
     /** One thread for everything the framework runs "on the UI thread"; there is no other. */
     private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "kotlinmcui-headless").apply { isDaemon = true }
+        Thread(runnable, "kotlinmcui-headless").apply { isDaemon = true; sessionThread = this }
     }
+
+    /** The thread the single-thread executor runs on, recorded when it is created. */
+    @Volatile
+    private var sessionThread: Thread? = null
+
+    override val isOnSessionThread get() = Thread.currentThread() === sessionThread
 
     override val sessionDispatcher: CoroutineDispatcher = executor.asCoroutineDispatcher()
 

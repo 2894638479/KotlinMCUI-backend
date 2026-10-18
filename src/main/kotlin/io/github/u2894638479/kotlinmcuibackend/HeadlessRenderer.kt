@@ -1,6 +1,6 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import io.github.u2894638479.kotlinmcui.backend.DslBackendRenderer
+import io.github.u2894638479.kotlinmcui.backend.DslRootRenderer
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
 import io.github.u2894638479.kotlinmcui.math.Color
@@ -20,7 +20,7 @@ import io.github.u2894638479.kotlinmcui.text.DslRenderableChar
  * renderer non-null is what keeps [getFont] reachable: text reads its font from the renderer, so a
  * null renderer would take the font away with the drawing.
  */
-internal object HeadlessRenderer : DslBackendRenderer<Unit> {
+internal object HeadlessRenderer : DslRootRenderer<Unit> {
     /** Advancing by nothing keeps layout of text deterministic without ever painting it. */
     private val font = object : DslFont<Unit> {
         override val lineHeight = 9.px

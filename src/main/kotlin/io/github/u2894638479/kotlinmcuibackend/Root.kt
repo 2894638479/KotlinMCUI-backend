@@ -1,6 +1,6 @@
 package io.github.u2894638479.kotlinmcuibackend
 
-import io.github.u2894638479.kotlinmcui.backend.DslBackendScreenHolder
+import io.github.u2894638479.kotlinmcui.backend.DslScreenHolder
 import io.github.u2894638479.kotlinmcui.backend.DslRootScreenFactory
 import io.github.u2894638479.kotlinmcui.container.DslDataStore
 import io.github.u2894638479.kotlinmcui.container.DslRoot
@@ -38,9 +38,9 @@ internal object Root {
  * to hand back, and the holder has no way to express "none".
  */
 internal object HeadlessScreenFactory : DslRootScreenFactory<Unit> {
-    override fun create(title: String, dslFunction: DslFunction): DslBackendScreenHolder<Unit> {
+    override fun create(title: String, dslFunction: DslFunction): DslScreenHolder<Unit> {
         val dataStore = DslDataStore(Platform, Root.get(), title, {}, dslFunction)
-        return object : DslBackendScreenHolder<Unit> {
+        return object : DslScreenHolder<Unit> {
             override fun show() {}
             override val screen = Unit
             override val dslScreen = dataStore.dslScreen

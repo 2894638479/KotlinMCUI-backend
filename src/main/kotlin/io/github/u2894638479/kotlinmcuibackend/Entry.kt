@@ -23,6 +23,8 @@ internal class Entry : ModInitializer {
         if (FabricLoader.getInstance().isModLoaded(WINDOW_MOD_ID)) {
             dslLogger.info("$WINDOW_MOD_ID is installed, so this backend yields the platform to it")
         } else if (DslRuntime.start { Platform }) {
+            // The launch hooks belong to whoever published the platform; `start` does not run them.
+            DslRuntime.launch()
             dslLogger.info("headless backend published on ${Metadata.environment}")
         }
         Root.create()
