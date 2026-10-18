@@ -1,7 +1,6 @@
 package io.github.u2894638479.kotlinmcuibackend.mixin;
 
 import com.mojang.blaze3d.platform.Window;
-import io.github.u2894638479.kotlinmcuibackend.ClientActivation;
 import io.github.u2894638479.kotlinmcuibackend.Input;
 import io.github.u2894638479.kotlinmcuibackend.Platform;
 import io.github.u2894638479.kotlinmcuibackend.Root;
@@ -34,9 +33,9 @@ public class MinecraftMixin {
         // platform: another backend owning the platform no longer makes this one unable to work.
         Root.INSTANCE.create();
         // Driving the game's own HUD is a policy, and it needs this backend to have published the
-        // platform. This build also stands down when the window backend is installed, which is a
-        // property of the installation rather than of the ordering.
-        Root.setDriving(published && !ClientActivation.yieldsToWindowBackend());
+        // platform. Two backends no longer compete for output - the platform is process-wide while
+        // each backend draws into its own root - so publishing implies driving.
+        Root.setDriving(published);
         if (!Root.isDriving()) return;
         // The preview is a tool rather than a process fact: it draws into the root it is handed and
         // reads no global. It starts only on the branch that drives - a preview on a root nobody
