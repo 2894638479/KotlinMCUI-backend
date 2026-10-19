@@ -2,8 +2,8 @@ package io.github.u2894638479.kotlinmcuibackend.mixin;
 
 import com.mojang.blaze3d.platform.Window;
 import io.github.u2894638479.kotlinmcuibackend.Input;
-import io.github.u2894638479.kotlinmcuibackend.Platform;
 import io.github.u2894638479.kotlinmcuibackend.Root;
+import io.github.u2894638479.kotlinmcuibackend.Utils;
 import io.github.u2894638479.kotlinmcui.backend.DslPreview;
 import io.github.u2894638479.kotlinmcui.backend.DslRuntime;
 import net.minecraft.client.Minecraft;
@@ -23,9 +23,9 @@ public class MinecraftMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     void kotlinmcuibackend$registerEventCallbacks(GameConfig gameConfig, CallbackInfo ci) {
-        // The window exists now, so screens can be built: publish the platform. The lambda is lazy
-        // on purpose - forcing Platform here would initialize it too early.
-        boolean published = DslRuntime.INSTANCE.start(() -> Platform.INSTANCE);
+        // The window exists now, so screens can be built: publish the platform's utils. The lambda is
+        // lazy on purpose - forcing Utils here would initialize it too early.
+        boolean published = DslRuntime.INSTANCE.start(() -> Utils.INSTANCE);
         // The launch hooks belong to whoever published the platform, and `start` deliberately does
         // not run them: a test or a standalone tool publishes a platform without a game to launch.
         if (published) DslRuntime.INSTANCE.launch();

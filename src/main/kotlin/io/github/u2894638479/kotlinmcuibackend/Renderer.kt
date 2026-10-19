@@ -10,6 +10,7 @@ import io.github.u2894638479.kotlinmcui.backend.DslRootRenderer
 import io.github.u2894638479.kotlinmcui.backend.fillRect
 import io.github.u2894638479.kotlinmcui.context.DslScaleContext
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
+import io.github.u2894638479.kotlinmcui.image.ImageSource
 import io.github.u2894638479.kotlinmcui.image.ImageStrategy
 import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.Measure
@@ -36,8 +37,53 @@ import kotlin.math.roundToInt
 internal object Renderer: DslRootRenderer<GuiGraphics> {
     override val guiScale get() = Minecraft.getInstance().window.guiScale
 
+    /**
+     * Measurement hooks, off unless a system property asks for them.
+     *
+     * `-Dkotlinmcui.flush.stats=true` counts and times every batch submit and prints the totals at exit;
+     * `-Dkotlinmcui.flush.none=true` skips the submit entirely - wrong to look at, but it gives the upper
+     * bound of what the ordering boundary costs on the same page.
+     */
+    private val flushStats = System.getProperty("kotlinmcui.flush.stats") != null
+    private val flushNone = System.getProperty("kotlinmcui.flush.none") != null
+    private var flushCount = 0L
+    private var flushNanos = 0L
+    private var lastFrameCount = 0L
+    private var lastFrameNanos = 0L
+
+    /** The batch submits since the previous call: one number per frame. */
+    internal fun takeFrameFlushes(): Long {
+        val delta = flushCount - lastFrameCount
+        lastFrameCount = flushCount
+        return delta
+    }
+
+    /** The microseconds spent submitting since the previous call. */
+    internal fun takeFrameFlushNanos(): Long {
+        val delta = flushNanos - lastFrameNanos
+        lastFrameNanos = flushNanos
+        return delta
+    }
+
+    /** Whether the frame trace should be printed. */
+    internal val tracingFlushes get() = flushStats
+
+    init {
+        if(flushStats) Runtime.getRuntime().addShutdownHook(Thread {
+            val average = if(flushCount == 0L) 0L else flushNanos / 1000 / flushCount
+            println("FLUSHSTATS count=$flushCount total_ms=${flushNanos / 1_000_000} avg_us=$average")
+        })
+    }
+
     context(renderParam: GuiGraphics)
-    override fun flush() = renderParam.flush()
+    override fun flush() {
+        if(flushNone) return
+        if(!flushStats) { renderParam.flush(); return }
+        val start = System.nanoTime()
+        renderParam.flush()
+        flushNanos += System.nanoTime() - start
+        flushCount++
+    }
 
     context(renderParam:GuiGraphics, ctx: DslScaleContext)
     override fun renderButton(rect: Rect, highlighted: Boolean, active: Boolean, color: Color) {
@@ -46,7 +92,7 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
         if(highlighted) textureY += 20
         if(active) textureY += 40
         val uvOuter = Rect(0.px,textureY.px,200.px,textureY.px + 20.px)
-        val image = ImageHolder("minecraft:textures/gui/slider.png",256.px,256.px)
+        val image = ImageHolder(ImageSource.Resource("minecraft:textures/gui/slider.png"),256.px,256.px)
         ImageStrategy.nineSlice(uvOuter,uvOuter.expand(-3.px),ctx.scale).render(rect,image,color)
     }
 
@@ -74,7 +120,7 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
         val t = rect.top.pixelsOrElse<Float> { return }
         val r = rect.right.pixelsOrElse<Float> { return }
         val b = rect.bottom.pixelsOrElse<Float> { return }
-        if(image == null || image.id.isEmpty() || uv == null) {
+        if(image == null || image.source !is ImageSource.Resource || uv == null) {
             val projected = perspective
             if (projected != null) {
                 // The pose below has no perspective in it (withTransform keeps that out), so the
@@ -129,7 +175,9 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
 
     context(renderParam: GuiGraphics)
     override fun renderTriangles(vertices: FloatArray, colors: IntArray, image: ImageHolder?) {
-        val img = image?.takeIf { it.id.isNotEmpty() }
+        // A holder that is not a registered resource has no texture this backend can bind, so it
+        // draws as colour only, exactly like an empty holder.
+        val img = image?.takeIf { it.source is ImageSource.Resource }
         val stride = if(img == null) 2 else 4
         // A malformed list is a caller bug; drawing nothing beats drawing garbage.
         if(colors.size * stride != vertices.size || colors.size % 3 != 0) return
@@ -148,12 +196,22 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
         }
     }
 
+    /**
+     * The game texture this holder names, or `null` when there is none this backend can bind.
+     *
+     * Only [ImageSource.Resource] maps onto a game texture: a [ImageSource.LocalFile] is decoded and
+     * registered as one before it is handed out (see [Utils.localImage]), and this backend has no
+     * remote loader, so [ImageSource.Remote] never becomes drawable here.
+     */
+    private fun ImageHolder.texture(): ResourceLocation? =
+        (source as? ImageSource.Resource)?.let { ResourceLocation.tryParse(it.location) }
+
     /** The vanilla textured-quad path: batched, one tint for the whole quad. */
     context(renderParam: GuiGraphics)
     private fun blitTexture(image: ImageHolder, rect: Rect, uv: Rect, color: Color) {
         val rect = rect.toInt().ifEmpty { return }
         renderParam.innerBlit(
-            ResourceLocation.tryParse(image.id) ?: return,
+            image.texture() ?: return,
             rect.left,rect.right,rect.top,rect.bottom,0,
             (uv.left / image.width).toFloat(),(uv.right / image.width).toFloat(),
             (uv.top / image.height).toFloat(),(uv.bottom / image.height).toFloat(),
@@ -176,7 +234,7 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
         if(image == null) {
             RenderSystem.setShader(GameRenderer::getPositionColorShader)
         } else {
-            val location = ResourceLocation.tryParse(image.id) ?: return
+            val location = image.texture() ?: return
             RenderSystem.setShader(GameRenderer::getPositionColorTexShader)
             RenderSystem.setShaderTexture(0,location)
         }
@@ -193,12 +251,12 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderContainer(rect: Rect) = ImageStrategy.nineSlice(
         Rect(0.px,0.px,248.px,166.px),Rect(3.px,3.px,245.px,163.px),ctx.scale
-    ).render(rect,ImageHolder("minecraft:textures/gui/demo_background.png",256.px,256.px),Color.WHITE)
+    ).render(rect,ImageHolder(ImageSource.Resource("minecraft:textures/gui/demo_background.png"),256.px,256.px),Color.WHITE)
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderSlot(rect: Rect) = ImageStrategy.nineSlice(
         Rect(7.px,141.px,25.px,159.px),Rect(8.px,142.px,24.px,158.px),ctx.scale
-    ).render(rect,ImageHolder("minecraft:textures/gui/container/inventory.png",256.px,256.px),Color.WHITE)
+    ).render(rect,ImageHolder(ImageSource.Resource("minecraft:textures/gui/container/inventory.png"),256.px,256.px),Color.WHITE)
 
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderTooltip(rect: Rect) {
@@ -212,7 +270,7 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
     context(renderParam: GuiGraphics, ctx: DslScaleContext)
     override fun renderItem(rect: Rect, item: String, count:Int, damage:Double?, enchanted: Boolean) {
         val item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(item))
-        if(!item.isPresent) blitTexture(ImageHolder("missing", 16.px, 16.px),rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
+        if(!item.isPresent) blitTexture(ImageHolder(ImageSource.Resource("missing"), 16.px, 16.px),rect,Rect(0.px,0.px,16.px,16.px),Color.WHITE)
         else stack {
             RenderSystem.disableDepthTest()
             val itemStack = item.get().defaultInstance.also {
@@ -330,7 +388,7 @@ internal object Renderer: DslRootRenderer<GuiGraphics> {
     override fun renderDefaultBackground(rect: Rect) {
         ImageStrategy.repeat(scale = ctx.scale).render(
             rect,
-            ImageHolder(Screen.BACKGROUND_LOCATION.toString(), 32.px, 32.px),
+            ImageHolder(ImageSource.Resource(Screen.BACKGROUND_LOCATION.toString()), 32.px, 32.px),
             Color(0.25,0.25,0.25)
         )
     }

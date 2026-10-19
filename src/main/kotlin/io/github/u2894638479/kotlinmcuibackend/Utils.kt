@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage
 import io.github.u2894638479.kotlinmcui.backend.DslPlatformUtils
 import io.github.u2894638479.kotlinmcui.backend.DslRootUtils
 import io.github.u2894638479.kotlinmcui.image.ImageHolder
+import io.github.u2894638479.kotlinmcui.image.ImageSource
 import io.github.u2894638479.kotlinmcui.logger.dslLogger
 import io.github.u2894638479.kotlinmcui.math.Color
 import io.github.u2894638479.kotlinmcui.math.px
@@ -67,10 +68,19 @@ internal object Utils: DslPlatformUtils, DslRootUtils {
     override var clipboard by Minecraft.getInstance().keyboardHandler::clipboard
     override fun openUri(uri: String) = Util.getPlatform().openUri(uri)
 
-    override fun forceLoadLocalImage(file: File): ImageHolder {
+    /** Forget the cached holder; the next [localImage] starts reading [file] again. */
+    override fun reloadLocalImage(file: File) {
         imageMap.remove(file)
-        return loadLocalImage(file)
     }
+
+    /**
+     * This backend has no http client, so a remote image is never drawn. Answering empty (rather than
+     * throwing) is the contract: a page still renders, minus the image.
+     */
+    override fun remoteImage(url: String) = ImageHolder.empty
+
+    /** Remote images are never cached here, so there is nothing to drop. */
+    override fun reloadRemoteImage(url: String) {}
 
     override fun playButtonSound() {
         Minecraft.getInstance().soundManager.play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f))
@@ -110,7 +120,7 @@ internal object Utils: DslPlatformUtils, DslRootUtils {
     }
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    override fun loadLocalImage(file: File): ImageHolder {
+    override fun localImage(file: File): ImageHolder {
         imageMap[file]?.let { return it }
         if(!imageMap.containsKey(file)) {
             imageMap[file] = ImageHolder.empty
@@ -118,13 +128,13 @@ internal object Utils: DslPlatformUtils, DslRootUtils {
                 val dynamic = loadImageFile(file)
                 val native = dynamic?.pixels ?: run {
                     Minecraft.getInstance().execute {
-                        imageMap[file] = ImageHolder("missing",16.px,16.px)
+                        imageMap[file] = ImageHolder(ImageSource.Resource("missing"),16.px,16.px)
                     }
                     return@launch
                 }
                 Minecraft.getInstance().execute {
                     val location = Minecraft.getInstance().textureManager.register("dslimageid", dynamic)
-                    imageMap[file] = ImageHolder(location.toString(), native.width.px, native.height.px)
+                    imageMap[file] = ImageHolder(ImageSource.Resource(location.toString()), native.width.px, native.height.px)
                 }
             }
         }

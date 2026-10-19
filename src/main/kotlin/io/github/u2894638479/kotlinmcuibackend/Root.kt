@@ -61,6 +61,7 @@ internal object Root {
         // that state is not ready yet: drawing now submits against a pose the game has not set up,
         // and (on backends that compile pipelines eagerly) can poison their cache.
         if (mc.overlay != null) return
+        val started = System.nanoTime()
         context(Renderer, renderParam, Input.mouse) {
             root.rect.apply {
                 left = 0.px
@@ -69,6 +70,12 @@ internal object Root {
                 bottom = mc.window.screenHeight.px
             }
             root.component.render()
+        }
+        if(Renderer.tracingFlushes) {
+            val count = Renderer.takeFrameFlushes()
+            val nanos = Renderer.takeFrameFlushNanos()
+            val frame = System.nanoTime() - started
+            println("FLUSHFRAME count=$count us=${nanos / 1000} frame_us=${frame / 1000}")
         }
     }
 }
@@ -88,7 +95,7 @@ private inline val mc get() = Minecraft.getInstance()
 private class WrappedScreen(title: String, dslFunction: DslFunction) : Screen(Component.literal(title)) {
     val parent = mc.screen
     val dataStore = DslDataStore(
-        Platform, Root.get(), title,
+        Utils, Root.get(), title,
         { mc.execute { mc.setScreen(parent) } }, dslFunction
     )
     val dslScreen = dataStore.dslScreen
