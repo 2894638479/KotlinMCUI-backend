@@ -57,6 +57,9 @@ internal object Root {
      */
     @JvmStatic
     fun frame(root: DslRoot, renderParam: GuiGraphics) {
+        // Cache maintenance is not drawing, so it runs even while the guard below holds the frame
+        // back: this is the one place that is known to happen every frame, on the render thread.
+        Utils.sweepLocalImages()
         // The HUD draws through the game's own GUI rendering, and while the loading overlay is up
         // that state is not ready yet: drawing now submits against a pose the game has not set up,
         // and (on backends that compile pipelines eagerly) can poison their cache.
