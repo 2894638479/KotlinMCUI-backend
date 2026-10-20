@@ -65,6 +65,7 @@ internal object Root {
         // and (on backends that compile pipelines eagerly) can poison their cache.
         if (mc.overlay != null) return
         val started = System.nanoTime()
+        Renderer.beginFrameTrace()
         context(Renderer, renderParam, Input.mouse) {
             root.rect.apply {
                 left = 0.px
@@ -74,11 +75,21 @@ internal object Root {
             }
             root.component.render()
         }
+        // The display list is per frame: whatever no decorator forced out is replayed here, and only
+        // then is the frame's batch count final.
+        Renderer.endFrame(renderParam)
         if(Renderer.tracingFlushes) {
             val count = Renderer.takeFrameFlushes()
+            val alts = Renderer.takeFrameAlternations()
+            val order = Renderer.takeFrameOrderSwitches()
+            val runs = Renderer.tracedRuns
+            val scissors = Renderer.takeFrameScissorSubmits()
             val nanos = Renderer.takeFrameFlushNanos()
             val frame = System.nanoTime() - started
-            println("FLUSHFRAME count=$count us=${nanos / 1000} frame_us=${frame / 1000}")
+            println(
+                "FLUSHFRAME count=$count alts=$alts runs=$runs order=$order " +
+                    "scissors=$scissors us=${nanos / 1000} frame_us=${frame / 1000}"
+            )
         }
     }
 }
